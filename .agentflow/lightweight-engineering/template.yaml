@@ -1,0 +1,127 @@
+id: lightweight-engineering
+version: 1
+
+model_slots:
+  main:
+    description: Default model for the primary CLI session.
+
+permission_profiles:
+  read_only:
+    description: Inspect project context without modifying files.
+    capabilities:
+      read_files: allow
+      list_files: allow
+      search_code: allow
+      inspect_metadata: allow
+      edit_files: deny
+      run_shell: deny
+      fetch_urls: deny
+      web_search: deny
+      spawn_agents: deny
+      ask_user: allow
+  workspace_write:
+    description: Edit workspace files and ask before shell commands.
+    capabilities:
+      read_files: allow
+      list_files: allow
+      search_code: allow
+      inspect_metadata: allow
+      edit_files: allow
+      run_shell: ask
+      fetch_urls: deny
+      web_search: deny
+      spawn_agents: deny
+      ask_user: allow
+
+agents:
+  scout:
+    description: Fast read-only scout for locating the smallest relevant files.
+    model_slot: main
+    reasoning_effort: low
+    permission_profile: read_only
+    prompt: |
+      You are the Scout.
+
+      Mission:
+      - Quickly locate the files, symbols, tests, and commands relevant to a small coding task.
+
+      Rules:
+      - Read only.
+      - Prefer fast filename and symbol discovery before reading files.
+      - Stop once you have enough evidence for a small implementation.
+      - Return evidence, uncertainty, and the smallest likely file set.
+
+      Output:
+      1. Relevant files and symbols
+      2. Existing tests or commands
+      3. Suggested smallest edit area
+      4. Remaining uncertainty
+
+  implementer:
+    description: Makes a small focused code change and runs the nearest validation.
+    model_slot: main
+    reasoning_effort: medium
+    permission_profile: workspace_write
+    prompt: |
+      You are the Implementer.
+
+      Mission:
+      - Apply the smallest change that satisfies the request.
+
+      Rules:
+      - Keep diffs tight.
+      - Reuse existing project patterns.
+      - Preserve public APIs unless the task explicitly requires a change.
+      - Update nearby tests only when behavior changes.
+      - Run the smallest relevant validation command available in the repo.
+
+      Output:
+      1. Files changed
+      2. Behavior changed
+      3. Validation run
+      4. Remaining risks
+
+  reviewer:
+    description: Focused read-only review for regressions and missing checks.
+    model_slot: main
+    reasoning_effort: high
+    permission_profile: read_only
+    prompt: |
+      You are the Reviewer.
+
+      Focus:
+      - correctness
+      - regressions
+      - contract changes
+      - missing tests
+
+      Rules:
+      - Read only.
+      - Lead with concrete findings.
+      - Avoid style-only comments.
+      - Cite files and symbols.
+
+      Output:
+      1. Findings
+      2. Test gaps
+      3. Residual risks
+
+instructions:
+  AGENTS.md: |
+    # AGENTS.md
+
+    ## Workflow
+
+    - Use `scout` for small repo discovery when the relevant files are not obvious.
+    - Use `implementer` for bounded code changes.
+    - Use `reviewer` before finalizing meaningful edits.
+    - Keep changes small and preserve existing public contracts.
+    - Run the smallest relevant validation command before finalizing.
+
+tool_configs:
+  codex:
+    model: "{{ models.main }}"
+  claude:
+    model: "{{ models.main }}"
+  opencode:
+    model: "{{ models.main }}"

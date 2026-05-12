@@ -1,0 +1,40 @@
+version: "3"
+
+tasks:
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+
+  tidy:
+    desc: Tidy modules
+    cmds:
+      - go mod tidy
+
+  lint:
+    desc: Run static checks
+    cmds:
+      - go vet ./...
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  test:race:
+    desc: Run tests with the race detector
+    cmds:
+      - go test -race ./...
+
+  check:
+    desc: Run formatting, module tidy, vet, and tests
+    cmds:
+      - task: fmt
+      - task: tidy
+      - task: lint
+      - task: test
+
+  build:
+    desc: Build the agentflow CLI
+    cmds:
+      - go build -o ./bin/agentflow ./cmd/agentflow
