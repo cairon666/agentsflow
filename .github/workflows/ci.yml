@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install Task
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.50.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Test
+        run: task test
+
+      - name: Ensure generated formatting is committed
+        run: git diff --exit-code
+
+      - name: Generate npm packages
+        run: task package:npm VERSION=0.0.0-ci
+
+      - name: Validate npm package tarballs
+        run: |
+          for package_dir in npm/*; do
+            (cd "$package_dir" && npm pack --dry-run)
+          done

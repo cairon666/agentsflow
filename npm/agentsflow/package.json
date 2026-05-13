@@ -1,0 +1,31 @@
+{
+  "name": "agentsflow",
+  "version": "0.0.0",
+  "description": "CLI for reusable agent workflows across agent coding tools.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cairon666/agentsflow.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "agentsflow": "bin/agentsflow.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "agentsflow-darwin-arm64": "0.0.0",
+    "agentsflow-darwin-x64": "0.0.0",
+    "agentsflow-linux-arm64": "0.0.0",
+    "agentsflow-linux-x64": "0.0.0",
+    "agentsflow-win32-arm64": "0.0.0",
+    "agentsflow-win32-x64": "0.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

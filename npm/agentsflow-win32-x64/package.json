@@ -1,0 +1,27 @@
+{
+  "name": "agentsflow-win32-x64",
+  "version": "0.0.0",
+  "description": "The Windows x64 binary for agentsflow.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cairon666/agentsflow.git"
+  },
+  "license": "MIT",
+  "preferUnplugged": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

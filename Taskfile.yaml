@@ -38,3 +38,78 @@ tasks:
     desc: Build the agentsflow CLI
     cmds:
       - go build -o ./bin/agentsflow ./cmd/agentsflow
+
+  package:npm:
+    desc: Build release binaries into npm platform packages and ./dist/artifacts
+    cmds:
+      - |
+        set -eu
+        version="{{.VERSION}}"
+        case "$version" in
+          ""|v*) echo "VERSION must be a semver version without a leading v" >&2; exit 2 ;;
+        esac
+        rm -rf ./dist/artifacts ./npm/agentsflow-*/bin
+        mkdir -p ./dist/artifacts
+        for package_dir in \
+          ./npm/agentsflow \
+          ./npm/agentsflow-darwin-arm64 \
+          ./npm/agentsflow-darwin-x64 \
+          ./npm/agentsflow-linux-arm64 \
+          ./npm/agentsflow-linux-x64 \
+          ./npm/agentsflow-win32-arm64 \
+          ./npm/agentsflow-win32-x64
+        do
+          npm pkg set version="$version" --prefix "$package_dir"
+        done
+        npm pkg set \
+          optionalDependencies.agentsflow-darwin-arm64="$version" \
+          optionalDependencies.agentsflow-darwin-x64="$version" \
+          optionalDependencies.agentsflow-linux-arm64="$version" \
+          optionalDependencies.agentsflow-linux-x64="$version" \
+          optionalDependencies.agentsflow-win32-arm64="$version" \
+          optionalDependencies.agentsflow-win32-x64="$version" \
+          --prefix ./npm/agentsflow
+      - task: package:npm-platform
+        vars: { VERSION: "{{.VERSION}}", GOOS: "darwin", GOARCH: "arm64", PACKAGE: "agentsflow-darwin-arm64", BINARY: "agentsflow", ARTIFACT: "darwin-arm64" }
+      - task: package:npm-platform
+        vars: { VERSION: "{{.VERSION}}", GOOS: "darwin", GOARCH: "amd64", PACKAGE: "agentsflow-darwin-x64", BINARY: "agentsflow", ARTIFACT: "darwin-x64" }
+      - task: package:npm-platform
+        vars: { VERSION: "{{.VERSION}}", GOOS: "linux", GOARCH: "arm64", PACKAGE: "agentsflow-linux-arm64", BINARY: "agentsflow", ARTIFACT: "linux-arm64" }
+      - task: package:npm-platform
+        vars: { VERSION: "{{.VERSION}}", GOOS: "linux", GOARCH: "amd64", PACKAGE: "agentsflow-linux-x64", BINARY: "agentsflow", ARTIFACT: "linux-x64" }
+      - task: package:npm-platform
+        vars: { VERSION: "{{.VERSION}}", GOOS: "windows", GOARCH: "arm64", PACKAGE: "agentsflow-win32-arm64", BINARY: "agentsflow.exe", ARTIFACT: "win32-arm64" }
+      - task: package:npm-platform
+        vars: { VERSION: "{{.VERSION}}", GOOS: "windows", GOARCH: "amd64", PACKAGE: "agentsflow-win32-x64", BINARY: "agentsflow.exe", ARTIFACT: "win32-x64" }
+      - |
+        set -eu
+        cd ./dist/artifacts
+        if command -v sha256sum >/dev/null 2>&1; then
+          sha256sum ./*.tar.gz > checksums.txt
+        else
+          shasum -a 256 ./*.tar.gz > checksums.txt
+        fi
+
+  package:npm-platform:
+    internal: true
+    cmds:
+      - |
+        set -eu
+        mkdir -p "./npm/{{.PACKAGE}}/bin"
+        CGO_ENABLED=0 GOOS="{{.GOOS}}" GOARCH="{{.GOARCH}}" go build \
+          -trimpath \
+          -ldflags "-s -w -X github.com/cairon666/agentsflow/internal/cli.Version={{.VERSION}}" \
+          -o "./npm/{{.PACKAGE}}/bin/{{.BINARY}}" \
+          ./cmd/agentsflow
+        tar -C "./npm/{{.PACKAGE}}/bin" -czf "./dist/artifacts/agentsflow_{{.VERSION}}_{{.ARTIFACT}}.tar.gz" "{{.BINARY}}"
+
+  publish:npm:
+    desc: Publish npm packages, with platform packages first
+    cmds:
+      - cd ./npm/agentsflow-darwin-arm64 && npm publish --access public
+      - cd ./npm/agentsflow-darwin-x64 && npm publish --access public
+      - cd ./npm/agentsflow-linux-arm64 && npm publish --access public
+      - cd ./npm/agentsflow-linux-x64 && npm publish --access public
+      - cd ./npm/agentsflow-win32-arm64 && npm publish --access public
+      - cd ./npm/agentsflow-win32-x64 && npm publish --access public
+      - cd ./npm/agentsflow && npm publish --access public
