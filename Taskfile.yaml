@@ -70,17 +70,65 @@ tasks:
           optionalDependencies.agentsflow-win32-x64="$version" \
           --prefix ./npm/agentsflow
       - task: package:npm-platform
-        vars: { VERSION: "{{.VERSION}}", GOOS: "darwin", GOARCH: "arm64", PACKAGE: "agentsflow-darwin-arm64", BINARY: "agentsflow", ARTIFACT: "darwin-arm64" }
+        vars:
+          {
+            VERSION: "{{.VERSION}}",
+            GOOS: "darwin",
+            GOARCH: "arm64",
+            PACKAGE: "agentsflow-darwin-arm64",
+            BINARY: "agentsflow",
+            ARTIFACT: "darwin-arm64",
+          }
       - task: package:npm-platform
-        vars: { VERSION: "{{.VERSION}}", GOOS: "darwin", GOARCH: "amd64", PACKAGE: "agentsflow-darwin-x64", BINARY: "agentsflow", ARTIFACT: "darwin-x64" }
+        vars:
+          {
+            VERSION: "{{.VERSION}}",
+            GOOS: "darwin",
+            GOARCH: "amd64",
+            PACKAGE: "agentsflow-darwin-x64",
+            BINARY: "agentsflow",
+            ARTIFACT: "darwin-x64",
+          }
       - task: package:npm-platform
-        vars: { VERSION: "{{.VERSION}}", GOOS: "linux", GOARCH: "arm64", PACKAGE: "agentsflow-linux-arm64", BINARY: "agentsflow", ARTIFACT: "linux-arm64" }
+        vars:
+          {
+            VERSION: "{{.VERSION}}",
+            GOOS: "linux",
+            GOARCH: "arm64",
+            PACKAGE: "agentsflow-linux-arm64",
+            BINARY: "agentsflow",
+            ARTIFACT: "linux-arm64",
+          }
       - task: package:npm-platform
-        vars: { VERSION: "{{.VERSION}}", GOOS: "linux", GOARCH: "amd64", PACKAGE: "agentsflow-linux-x64", BINARY: "agentsflow", ARTIFACT: "linux-x64" }
+        vars:
+          {
+            VERSION: "{{.VERSION}}",
+            GOOS: "linux",
+            GOARCH: "amd64",
+            PACKAGE: "agentsflow-linux-x64",
+            BINARY: "agentsflow",
+            ARTIFACT: "linux-x64",
+          }
       - task: package:npm-platform
-        vars: { VERSION: "{{.VERSION}}", GOOS: "windows", GOARCH: "arm64", PACKAGE: "agentsflow-win32-arm64", BINARY: "agentsflow.exe", ARTIFACT: "win32-arm64" }
+        vars:
+          {
+            VERSION: "{{.VERSION}}",
+            GOOS: "windows",
+            GOARCH: "arm64",
+            PACKAGE: "agentsflow-win32-arm64",
+            BINARY: "agentsflow.exe",
+            ARTIFACT: "win32-arm64",
+          }
       - task: package:npm-platform
-        vars: { VERSION: "{{.VERSION}}", GOOS: "windows", GOARCH: "amd64", PACKAGE: "agentsflow-win32-x64", BINARY: "agentsflow.exe", ARTIFACT: "win32-x64" }
+        vars:
+          {
+            VERSION: "{{.VERSION}}",
+            GOOS: "windows",
+            GOARCH: "amd64",
+            PACKAGE: "agentsflow-win32-x64",
+            BINARY: "agentsflow.exe",
+            ARTIFACT: "win32-x64",
+          }
       - |
         set -eu
         cd ./dist/artifacts
@@ -106,10 +154,67 @@ tasks:
   publish:npm:
     desc: Publish npm packages, with platform packages first
     cmds:
-      - cd ./npm/agentsflow-darwin-arm64 && npm publish --access public
-      - cd ./npm/agentsflow-darwin-x64 && npm publish --access public
-      - cd ./npm/agentsflow-linux-arm64 && npm publish --access public
-      - cd ./npm/agentsflow-linux-x64 && npm publish --access public
-      - cd ./npm/agentsflow-win32-arm64 && npm publish --access public
-      - cd ./npm/agentsflow-win32-x64 && npm publish --access public
-      - cd ./npm/agentsflow && npm publish --access public
+      - task: publish:npm:darwin-arm64
+      - task: publish:npm:darwin-x64
+      - task: publish:npm:linux-arm64
+      - task: publish:npm:linux-x64
+      - task: publish:npm:win32-arm64
+      - task: publish:npm:win32-x64
+      - task: publish:npm:main
+
+  publish:npm-package:
+    internal: true
+    cmds:
+      - |
+        set -eu
+        package="{{.PACKAGE}}"
+        package_dir="./npm/$package"
+        version="$(node -p "require('$package_dir/package.json').version")"
+        if npm view "$package@$version" version >/dev/null 2>&1; then
+          echo "skip $package@$version: already published"
+        else
+          cd "$package_dir"
+          npm publish --access public
+        fi
+
+  publish:npm:darwin-arm64:
+    desc: Publish agentsflow-darwin-arm64 if this version is not already published
+    cmds:
+      - task: publish:npm-package
+        vars: { PACKAGE: "agentsflow-darwin-arm64" }
+
+  publish:npm:darwin-x64:
+    desc: Publish agentsflow-darwin-x64 if this version is not already published
+    cmds:
+      - task: publish:npm-package
+        vars: { PACKAGE: "agentsflow-darwin-x64" }
+
+  publish:npm:linux-arm64:
+    desc: Publish agentsflow-linux-arm64 if this version is not already published
+    cmds:
+      - task: publish:npm-package
+        vars: { PACKAGE: "agentsflow-linux-arm64" }
+
+  publish:npm:linux-x64:
+    desc: Publish agentsflow-linux-x64 if this version is not already published
+    cmds:
+      - task: publish:npm-package
+        vars: { PACKAGE: "agentsflow-linux-x64" }
+
+  publish:npm:win32-arm64:
+    desc: Publish agentsflow-win32-arm64 if this version is not already published
+    cmds:
+      - task: publish:npm-package
+        vars: { PACKAGE: "agentsflow-win32-arm64" }
+
+  publish:npm:win32-x64:
+    desc: Publish agentsflow-win32-x64 if this version is not already published
+    cmds:
+      - task: publish:npm-package
+        vars: { PACKAGE: "agentsflow-win32-x64" }
+
+  publish:npm:main:
+    desc: Publish agentsflow if this version is not already published
+    cmds:
+      - task: publish:npm-package
+        vars: { PACKAGE: "agentsflow" }
