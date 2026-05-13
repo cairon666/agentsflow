@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/cairon666/agentsflow/compare/v0.1.0...v0.1.1) (2026-05-13)
+
+
+### Bug Fixes
+
+* update publish retry ([139fadb](https://github.com/cairon666/agentsflow/commit/139fadb0bdb1b0dc65a46321daab49d11db6c124))
+
 ## 0.1.0 (2026-05-13)
 
 
