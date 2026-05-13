@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/cairon666/agentflow/internal/diagnostic"
-	flowtemplate "github.com/cairon666/agentflow/internal/template"
+	"github.com/cairon666/agentsflow/internal/diagnostic"
+	flowtemplate "github.com/cairon666/agentsflow/internal/template"
 )
 
 var idPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)

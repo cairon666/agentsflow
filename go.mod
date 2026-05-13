@@ -1,4 +1,4 @@
-module github.com/cairon666/agentflow
+module github.com/cairon666/agentsflow
 
 go 1.26.1
 

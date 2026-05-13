@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cairon666/agentflow/internal/ir"
+	"github.com/cairon666/agentsflow/internal/ir"
 )
 
 // AgentIDs returns sorted agent ids.

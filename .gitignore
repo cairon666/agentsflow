@@ -1,0 +1,24 @@
+# macOS / filesystem
+.DS_Store
+Thumbs.db
+
+# Local editor files
+.idea/
+.vscode/
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# Go build and test artifacts
+/bin/
+/dist/
+*.test
+*.prof
+coverage.out
+coverage.html
+
+# Temporary files
+/tmp/
+*.tmp

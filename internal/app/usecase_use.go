@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/cairon666/agentflow/internal/adapter"
-	"github.com/cairon666/agentflow/internal/builder"
-	"github.com/cairon666/agentflow/internal/diagnostic"
-	"github.com/cairon666/agentflow/internal/schema"
-	flowtemplate "github.com/cairon666/agentflow/internal/template"
+	"github.com/cairon666/agentsflow/internal/adapter"
+	"github.com/cairon666/agentsflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/diagnostic"
+	"github.com/cairon666/agentsflow/internal/schema"
+	flowtemplate "github.com/cairon666/agentsflow/internal/template"
 )
 
 // Use loads a template, asks the user for choices, renders, and installs files.

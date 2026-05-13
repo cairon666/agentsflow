@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cairon666/agentflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/binding"
 )
 
 // Registry stores target adapters by canonical name and alias.

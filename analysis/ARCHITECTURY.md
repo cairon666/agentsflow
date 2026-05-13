@@ -1,4 +1,4 @@
-# Agentflow: архитектура Go CLI и выбор библиотек
+# Agentsflow: архитектура Go CLI и выбор библиотек
 
 Дата анализа: 2026-05-12.
 
@@ -6,7 +6,7 @@
 
 ## Исходные требования
 
-Agentflow не должен превращать каждый template в набор vendor-specific блоков. Template должен описывать смысловую структуру workflow:
+Agentsflow не должен превращать каждый template в набор vendor-specific блоков. Template должен описывать смысловую структуру workflow:
 
 - логические model slots: `main`, `code`, `research`, произвольные слоты;
 - роли агентов: `explorer_fast`, `planner`, `implementer`, `reviewer` и т.д.;
@@ -14,7 +14,7 @@ Agentflow не должен превращать каждый template в наб
 - общие инструкции, например `AGENTS.md`;
 - минимальные tool-level настройки только там, где они действительно являются настройками выбранного target.
 
-Маппинг capabilities, форматов файлов, permission-моделей и путей установки должен жить в коде Agentflow, в target adapters, а не дублироваться в каждом шаблоне.
+Маппинг capabilities, форматов файлов, permission-моделей и путей установки должен жить в коде Agentsflow, в target adapters, а не дублироваться в каждом шаблоне.
 
 ## Архитектурный принцип
 
@@ -33,7 +33,7 @@ Agentflow не должен превращать каждый template в наб
 ## Рекомендуемая структура пакетов
 
 ```text
-cmd/agentflow/
+cmd/agentsflow/
   main.go
 
 internal/cli/
@@ -110,7 +110,7 @@ internal/diagnostic/
   format.go
 ```
 
-`cmd/agentflow` должен быть тонким: создать root command, передать `context.Context`, вернуть exit code. Бизнес-логика не должна жить в Cobra handlers.
+`cmd/agentsflow` должен быть тонким: создать root command, передать `context.Context`, вернуть exit code. Бизнес-логика не должна жить в Cobra handlers.
 
 ## Слои и ответственность
 
@@ -130,7 +130,7 @@ internal/diagnostic/
 
 ### `internal/schema`
 
-Содержит контракт Agentflow DSL, включая словарь capabilities. Именно здесь должны жить допустимые capability names:
+Содержит контракт Agentsflow DSL, включая словарь capabilities. Именно здесь должны жить допустимые capability names:
 
 ```text
 read_files
@@ -192,7 +192,7 @@ IR не должен знать, что Codex использует TOML, Claude 
 
 ### `internal/builder`
 
-Оркестрирует интерактивный сценарий `agentflow use <template>`.
+Оркестрирует интерактивный сценарий `agentsflow use <template>`.
 
 Builder не должен знать, как рендерить Codex TOML или Claude Markdown. Его задача:
 
@@ -292,7 +292,7 @@ OpenCode-specific risk: JSONC is common in config ecosystems, but generated outp
 В MVP нужна только одна пользовательская команда:
 
 ```sh
-agentflow use <template>
+agentsflow use <template>
 ```
 
 `use` работает как последовательный builder:
@@ -348,7 +348,7 @@ type Action struct {
 Для generated files не стоит добавлять служебный marker в содержимое файла.
 
 Безопасное обновление должно опираться на явные managed paths, checksum или metadata,
-например `.agentflow/manifest.json`, чтобы понимать, что именно менялось прошлым запуском.
+например `.agentsflow/manifest.json`, чтобы понимать, что именно менялось прошлым запуском.
 
 ## Библиотеки
 
@@ -360,9 +360,9 @@ type Action struct {
 
 - зрелый стандарт для subcommand-based CLI;
 - поддерживает help, aliases, shell completions и man pages без самописной CLI-инфраструктуры;
-- хорошо подходит для одного стартового сценария `agentflow use <template>` с понятным help, positional arguments и shell completion.
+- хорошо подходит для одного стартового сценария `agentsflow use <template>` с понятным help, positional arguments и shell completion.
 
-Не стоит сразу брать `viper` как обязательную зависимость. Viper полезен для сложной runtime config, env и config file merging, но для Agentflow на старте достаточно одного positional argument и интерактивных prompts. Если появится user config (`~/.config/agentflow/config.yaml`), Viper можно добавить позже.
+Не стоит сразу брать `viper` как обязательную зависимость. Viper полезен для сложной runtime config, env и config file merging, но для Agentsflow на старте достаточно одного positional argument и интерактивных prompts. Если появится user config (`~/.config/agentsflow/config.yaml`), Viper можно добавить позже.
 
 Источники:
 
@@ -448,7 +448,7 @@ type Action struct {
 - install plan tests без реальной записи на диск;
 - path safety tests для project/global scope;
 - snapshot/golden tests для Codex TOML, Claude Markdown frontmatter, OpenCode JSON.
-- CLI contract tests: наружу доступен только `agentflow use <template>`, а target, model bindings и scope собираются через prompts, не через `--target`, `--bind`, `--scope`.
+- CLI contract tests: наружу доступен только `agentsflow use <template>`, а target, model bindings и scope собираются через prompts, не через `--target`, `--bind`, `--scope`.
 
 Для файловых тестов на старте достаточно `t.TempDir()` и стандартного `os`/`io/fs`. `afero` добавлять только если появится реальная боль с filesystem abstraction.
 
@@ -458,7 +458,7 @@ type Action struct {
 2. Добавить loader YAML с strict known fields.
 3. Добавить semantic validator.
 4. Добавить adapter interface и registry.
-5. Добавить интерактивный builder для `agentflow use <template>` через `huh`.
+5. Добавить интерактивный builder для `agentsflow use <template>` через `huh`.
 6. Добавить model binding resolver, который принимает ответы builder'а.
 7. Реализовать первый target adapter.
 8. Добавить install plan и summary перед записью.
@@ -471,7 +471,7 @@ type Action struct {
 - Слишком ранние target-specific overrides в template. Решение: capabilities и adapters в core.
 - Потеря семантики permissions при маппинге. Решение: adapter diagnostics и warnings.
 - Небезопасная перезапись пользовательских файлов. Решение: install plan, managed markers/paths и обязательное подтверждение.
-- Разрастание CLI config. Решение: один builder-flow и один публичный сценарий `agentflow use <template>`.
+- Разрастание CLI config. Решение: один builder-flow и один публичный сценарий `agentsflow use <template>`.
 
 ## Рекомендуемый стартовый набор зависимостей
 

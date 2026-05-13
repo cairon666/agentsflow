@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cairon666/agentflow/internal/binding"
-	"github.com/cairon666/agentflow/internal/install"
-	"github.com/cairon666/agentflow/internal/ir"
+	"github.com/cairon666/agentsflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/ir"
 )
 
 func TestRunKeepsPreviousChoicesInOutputLog(t *testing.T) {

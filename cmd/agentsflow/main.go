@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cairon666/agentflow/internal/cli"
+	"github.com/cairon666/agentsflow/internal/cli"
 )
 
 func main() {

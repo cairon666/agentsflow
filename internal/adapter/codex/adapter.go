@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cairon666/agentflow/internal/adapter"
-	"github.com/cairon666/agentflow/internal/binding"
-	"github.com/cairon666/agentflow/internal/diagnostic"
-	"github.com/cairon666/agentflow/internal/install"
-	"github.com/cairon666/agentflow/internal/ir"
-	"github.com/cairon666/agentflow/internal/render"
+	"github.com/cairon666/agentsflow/internal/adapter"
+	"github.com/cairon666/agentsflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/diagnostic"
+	"github.com/cairon666/agentsflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/ir"
+	"github.com/cairon666/agentsflow/internal/render"
 	"github.com/pelletier/go-toml/v2"
 )
 

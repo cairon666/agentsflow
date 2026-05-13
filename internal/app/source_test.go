@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cairon666/agentflow/internal/adapter"
-	"github.com/cairon666/agentflow/internal/adapter/codex"
-	"github.com/cairon666/agentflow/internal/binding"
-	"github.com/cairon666/agentflow/internal/builder"
-	"github.com/cairon666/agentflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/adapter"
+	"github.com/cairon666/agentsflow/internal/adapter/codex"
+	"github.com/cairon666/agentsflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/install"
 )
 
 func TestUseRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
@@ -126,8 +126,8 @@ func assertTempRepoRemoved(t *testing.T, repoDest string) {
 		t.Fatal("git cloner did not receive a destination")
 	}
 	root := filepath.Dir(repoDest)
-	if !strings.HasPrefix(filepath.Base(root), "agentflow-") {
-		t.Fatalf("temporary repository root = %q, want prefix agentflow-", root)
+	if !strings.HasPrefix(filepath.Base(root), "agentsflow-") {
+		t.Fatalf("temporary repository root = %q, want prefix agentsflow-", root)
 	}
 	if _, err := os.Stat(root); !os.IsNotExist(err) {
 		t.Fatalf("temporary repository root still exists or could not be inspected: %v", err)

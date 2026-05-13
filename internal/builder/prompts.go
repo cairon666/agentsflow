@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 
-	"github.com/cairon666/agentflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/binding"
 )
 
 // HuhPrompter collects answers with huh forms.

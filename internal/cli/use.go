@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/cairon666/agentflow/internal/app"
-	"github.com/cairon666/agentflow/internal/binding"
-	"github.com/cairon666/agentflow/internal/builder"
-	"github.com/cairon666/agentflow/internal/ir"
+	"github.com/cairon666/agentsflow/internal/app"
+	"github.com/cairon666/agentsflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/ir"
 )
 
 func newUseCommand(application app.App) *cobra.Command {
@@ -20,7 +20,7 @@ func newUseCommandWithPrompter(application app.App, fallback builder.Prompter) *
 	options := useOptions{fallback: fallback}
 	cmd := &cobra.Command{
 		Use:   "use <template|repo>",
-		Short: "Interactively install an agentflow template",
+		Short: "Interactively install an agentsflow template",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prompter, err := options.prompter(application)

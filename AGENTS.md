@@ -7,4 +7,4 @@
 - Use `task test` for the default test suite.
 - Use `task test:race` when concurrency, shared state, or CLI flow changes need stronger validation.
 - Use `task check` before finalizing meaningful code changes.
-- Use `task build` to build the CLI binary into `./bin/agentflow`.
+- Use `task build` to build the CLI binary into `./bin/agentsflow`.

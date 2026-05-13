@@ -43,7 +43,7 @@ func writeAtomic(path string, data []byte) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create directory %q: %w", dir, err)
 	}
-	tmp, err := os.CreateTemp(dir, ".agentflow-*")
+	tmp, err := os.CreateTemp(dir, ".agentsflow-*")
 	if err != nil {
 		return fmt.Errorf("create temp file for %q: %w", path, err)
 	}

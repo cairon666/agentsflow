@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cairon666/agentflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/builder"
 )
 
-const templateRepoDir = ".agentflow"
+const templateRepoDir = ".agentsflow"
 
 func (a App) resolveTemplateSource(ctx context.Context, source string, prompter builder.Prompter) (string, func(), error) {
 	source = strings.TrimSpace(source)
@@ -31,7 +31,7 @@ func (a App) resolveGitTemplate(ctx context.Context, source string, prompter bui
 		return "", nil, fmt.Errorf("template selection prompt unavailable")
 	}
 
-	root, err := os.MkdirTemp("", "agentflow-*")
+	root, err := os.MkdirTemp("", "agentsflow-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("create temporary repository directory: %w", err)
 	}

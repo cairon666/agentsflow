@@ -1,6 +1,6 @@
 package binding
 
-import "github.com/cairon666/agentflow/internal/ir"
+import "github.com/cairon666/agentsflow/internal/ir"
 
 // ResolvedFlow combines IR with user choices collected by the builder.
 type ResolvedFlow struct {

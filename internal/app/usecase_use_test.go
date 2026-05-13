@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cairon666/agentflow/internal/adapter"
-	"github.com/cairon666/agentflow/internal/adapter/codex"
-	"github.com/cairon666/agentflow/internal/binding"
-	"github.com/cairon666/agentflow/internal/builder"
-	"github.com/cairon666/agentflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/adapter"
+	"github.com/cairon666/agentsflow/internal/adapter/codex"
+	"github.com/cairon666/agentsflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/install"
 )
 
 func TestUseWritesCodexFilesWithFakePrompter(t *testing.T) {

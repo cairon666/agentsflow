@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/cairon666/agentflow/internal/adapter"
-	"github.com/cairon666/agentflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/adapter"
+	"github.com/cairon666/agentsflow/internal/install"
 )
 
 // GitCloner clones a git repository into a destination directory.

@@ -5,18 +5,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/cairon666/agentflow/internal/adapter"
-	"github.com/cairon666/agentflow/internal/adapter/claude"
-	"github.com/cairon666/agentflow/internal/adapter/codex"
-	"github.com/cairon666/agentflow/internal/adapter/opencode"
-	"github.com/cairon666/agentflow/internal/app"
-	"github.com/cairon666/agentflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/adapter"
+	"github.com/cairon666/agentsflow/internal/adapter/claude"
+	"github.com/cairon666/agentsflow/internal/adapter/codex"
+	"github.com/cairon666/agentsflow/internal/adapter/opencode"
+	"github.com/cairon666/agentsflow/internal/app"
+	"github.com/cairon666/agentsflow/internal/install"
 )
 
-// NewRootCommand creates the agentflow command tree.
+// NewRootCommand creates the agentsflow command tree.
 func NewRootCommand() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "agentflow",
+		Use:           "agentsflow",
 		Short:         "Generate agent CLI configuration from a portable template",
 		SilenceUsage:  true,
 		SilenceErrors: true,

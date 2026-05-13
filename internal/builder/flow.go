@@ -5,9 +5,9 @@ import (
 	"io"
 	"sort"
 
-	"github.com/cairon666/agentflow/internal/binding"
-	"github.com/cairon666/agentflow/internal/install"
-	"github.com/cairon666/agentflow/internal/ir"
+	"github.com/cairon666/agentsflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/ir"
 )
 
 // TargetOption is shown to the user in the target selection step.
@@ -50,7 +50,7 @@ type ModelSlotValidator interface {
 // Run collects all decisions needed to render a flow.
 func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer) (Choices, error) {
 	fmt.Fprint(out, Banner())
-	fmt.Fprintf(out, "┌   agentflow\n")
+	fmt.Fprintf(out, "┌   agentsflow\n")
 	fmt.Fprintf(out, "│\n")
 	fmt.Fprintf(out, "◇  Template: %s (version %d)\n", flow.ID, flow.Version)
 	fmt.Fprintf(out, "◇  Agents: %d\n", len(flow.Agents))

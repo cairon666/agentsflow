@@ -3,8 +3,8 @@ package schema
 import (
 	"testing"
 
-	"github.com/cairon666/agentflow/internal/diagnostic"
-	flowtemplate "github.com/cairon666/agentflow/internal/template"
+	"github.com/cairon666/agentsflow/internal/diagnostic"
+	flowtemplate "github.com/cairon666/agentsflow/internal/template"
 )
 
 func TestValidateAcceptsMinimalFlow(t *testing.T) {

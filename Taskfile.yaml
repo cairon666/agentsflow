@@ -35,6 +35,6 @@ tasks:
       - task: test
 
   build:
-    desc: Build the agentflow CLI
+    desc: Build the agentsflow CLI
     cmds:
-      - go build -o ./bin/agentflow ./cmd/agentflow
+      - go build -o ./bin/agentsflow ./cmd/agentsflow

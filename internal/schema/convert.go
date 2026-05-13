@@ -1,8 +1,8 @@
 package schema
 
 import (
-	"github.com/cairon666/agentflow/internal/ir"
-	flowtemplate "github.com/cairon666/agentflow/internal/template"
+	"github.com/cairon666/agentsflow/internal/ir"
+	flowtemplate "github.com/cairon666/agentsflow/internal/template"
 )
 
 // ToIR converts a validated template into normalized IR.
