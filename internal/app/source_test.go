@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -22,13 +23,17 @@ func TestUseRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 	writeRemoteTemplate(t, repoDir, "alpha", testTemplate)
 
 	cloner := &fakeGitCloner{sourceDir: repoDir}
+	var stdout bytes.Buffer
 	prompter := &remotePrompter{selectedLabel: "alpha"}
-	application := remoteAppForTest(workDir, cloner)
+	application := remoteAppForTestWithStdout(workDir, cloner, &stdout)
 	if err := application.Use(t.Context(), "https://example.test/repo.git", prompter); err != nil {
 		t.Fatal(err)
 	}
 
 	assertTempRepoRemoved(t, cloner.dest)
+	if !strings.Contains(stdout.String(), "Loading repository") {
+		t.Fatalf("stdout missing loading indicator:\n%s", stdout.String())
+	}
 	if prompter.templateCalls != 1 {
 		t.Fatalf("template prompt calls = %d, want 1", prompter.templateCalls)
 	}
@@ -84,11 +89,31 @@ func TestUseRemoteRepositoryRequiresTemplates(t *testing.T) {
 	}
 }
 
+func TestUseRemoteRepositoryRemovesTempDirWhenCloneFails(t *testing.T) {
+	workDir := t.TempDir()
+	cloner := &failingGitCloner{err: errors.New("network down")}
+	var stdout bytes.Buffer
+
+	application := remoteAppForTestWithStdout(workDir, cloner, &stdout)
+	err := application.Use(t.Context(), "https://example.test/repo.git", &remotePrompter{})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertTempRepoRemoved(t, cloner.dest)
+	if !strings.Contains(stdout.String(), "Loading repository failed") {
+		t.Fatalf("stdout missing failed loading indicator:\n%s", stdout.String())
+	}
+}
+
 func remoteAppForTest(workDir string, cloner GitCloner) App {
+	return remoteAppForTestWithStdout(workDir, cloner, &bytes.Buffer{})
+}
+
+func remoteAppForTestWithStdout(workDir string, cloner GitCloner, stdout *bytes.Buffer) App {
 	return App{
 		Registry:  adapter.NewRegistry(codex.Adapter{}),
 		Writer:    install.NewWriter(),
-		Stdout:    &bytes.Buffer{},
+		Stdout:    stdout,
 		WorkDir:   workDir,
 		HomeDir:   workDir,
 		GitCloner: cloner,
@@ -188,6 +213,16 @@ type fakeGitCloner struct {
 func (c *fakeGitCloner) Clone(_ context.Context, _, dest string) error {
 	c.dest = dest
 	return copyTree(c.sourceDir, dest)
+}
+
+type failingGitCloner struct {
+	dest string
+	err  error
+}
+
+func (c *failingGitCloner) Clone(_ context.Context, _, dest string) error {
+	c.dest = dest
+	return c.err
 }
 
 func copyTree(source, dest string) error {

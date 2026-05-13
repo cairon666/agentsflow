@@ -3,12 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/cairon666/agentflow/internal/builder"
 )
@@ -42,7 +44,9 @@ func (a App) resolveGitTemplate(ctx context.Context, source string, prompter bui
 	if cloner == nil {
 		cloner = gitCLICloner{}
 	}
-	if err := cloner.Clone(ctx, source, repoDir); err != nil {
+	if err := runWithLoading(a.Stdout, "Loading repository", func() error {
+		return cloner.Clone(ctx, source, repoDir)
+	}); err != nil {
 		cleanup()
 		return "", nil, err
 	}
@@ -121,4 +125,46 @@ func (gitCLICloner) Clone(ctx context.Context, source, dest string) error {
 		return fmt.Errorf("clone template repository: %w", err)
 	}
 	return nil
+}
+
+func runWithLoading(out io.Writer, title string, action func() error) error {
+	if out == nil {
+		out = io.Discard
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- action()
+	}()
+
+	frames := []string{
+		"[>         ]",
+		"[=>        ]",
+		"[==>       ]",
+		"[===>      ]",
+		"[====>     ]",
+		"[=====>    ]",
+		"[======>   ]",
+		"[=======>  ]",
+		"[========> ]",
+		"[=========>]",
+	}
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	index := 0
+	fmt.Fprintf(out, "\r%s %s", title, frames[index])
+	for {
+		select {
+		case err := <-done:
+			if err != nil {
+				fmt.Fprintf(out, "\r%s failed\n", title)
+				return err
+			}
+			fmt.Fprintf(out, "\r%s done\n", title)
+			return nil
+		case <-ticker.C:
+			index = (index + 1) % len(frames)
+			fmt.Fprintf(out, "\r%s %s", title, frames[index])
+		}
+	}
 }
