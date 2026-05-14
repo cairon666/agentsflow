@@ -10,7 +10,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2/spinner"
+	"github.com/charmbracelet/x/term"
 
 	"github.com/cairon666/agentsflow/internal/builder"
 )
@@ -44,7 +47,7 @@ func (a App) resolveGitTemplate(ctx context.Context, source string, prompter bui
 	if cloner == nil {
 		cloner = gitCLICloner{}
 	}
-	if err := runWithLoading(a.Stdout, "Loading repository", func() error {
+	if err := runWithLoading(ctx, a.Stdout, "Loading repository...", func(ctx context.Context) error {
 		return cloner.Clone(ctx, source, repoDir)
 	}); err != nil {
 		cleanup()
@@ -127,44 +130,30 @@ func (gitCLICloner) Clone(ctx context.Context, source, dest string) error {
 	return nil
 }
 
-func runWithLoading(out io.Writer, title string, action func() error) error {
+func runWithLoading(ctx context.Context, out io.Writer, title string, action func(context.Context) error) error {
 	if out == nil {
 		out = io.Discard
 	}
-	done := make(chan error, 1)
-	go func() {
-		done <- action()
-	}()
-
-	frames := []string{
-		"[>         ]",
-		"[=>        ]",
-		"[==>       ]",
-		"[===>      ]",
-		"[====>     ]",
-		"[=====>    ]",
-		"[======>   ]",
-		"[=======>  ]",
-		"[========> ]",
-		"[=========>]",
+	loading := spinner.New().
+		Title(title).
+		WithTheme(spinner.ThemeFunc(func(bool) *spinner.Styles {
+			return spinner.ThemeDefault(true)
+		})).
+		WithViewHook(func(v tea.View) tea.View {
+			v.ProgressBar = tea.NewProgressBar(tea.ProgressBarIndeterminate, 1)
+			return v
+		}).
+		WithOutput(out).
+		ActionWithErr(func(context.Context) error {
+			return action(ctx)
+		})
+	if !isTerminalWriter(out) {
+		loading = loading.WithAccessible(true)
 	}
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
+	return loading.Run()
+}
 
-	index := 0
-	fmt.Fprintf(out, "\r%s %s", title, frames[index])
-	for {
-		select {
-		case err := <-done:
-			if err != nil {
-				fmt.Fprintf(out, "\r%s failed\n", title)
-				return err
-			}
-			fmt.Fprintf(out, "\r%s done\n", title)
-			return nil
-		case <-ticker.C:
-			index = (index + 1) % len(frames)
-			fmt.Fprintf(out, "\r%s %s", title, frames[index])
-		}
-	}
+func isTerminalWriter(out io.Writer) bool {
+	file, ok := out.(interface{ Fd() uintptr })
+	return ok && term.IsTerminal(file.Fd())
 }

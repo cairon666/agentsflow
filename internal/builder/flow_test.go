@@ -30,6 +30,9 @@ func TestRunKeepsPreviousChoicesInOutputLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := out.String()
+	if strings.Contains(output, Banner()) {
+		t.Fatalf("builder output should not include startup banner:\n%s", output)
+	}
 	for _, want := range []string{
 		"Selected target: codex",
 		"Slot main: model-main",

@@ -14,6 +14,8 @@ import (
 
 // Use loads a template, asks the user for choices, renders, and installs files.
 func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) error {
+	fmt.Fprint(a.Stdout, builder.Banner())
+
 	path, cleanup, err := a.resolveTemplateSource(ctx, source, prompter)
 	if err != nil {
 		return err

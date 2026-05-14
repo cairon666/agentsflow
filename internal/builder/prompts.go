@@ -3,7 +3,7 @@ package builder
 import (
 	"fmt"
 
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 
 	"github.com/cairon666/agentsflow/internal/binding"
 )

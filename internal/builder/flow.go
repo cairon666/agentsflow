@@ -49,7 +49,6 @@ type ModelSlotValidator interface {
 
 // Run collects all decisions needed to render a flow.
 func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer) (Choices, error) {
-	fmt.Fprint(out, Banner())
 	fmt.Fprintf(out, "┌   agentsflow\n")
 	fmt.Fprintf(out, "│\n")
 	fmt.Fprintf(out, "◇  Template: %s (version %d)\n", flow.ID, flow.Version)

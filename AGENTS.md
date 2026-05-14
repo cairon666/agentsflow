@@ -1,3 +1,7 @@
+## Code Design Principles
+
+When writing or modifying code, the agent must follow the SOLID principles
+
 ## Commands
 
 - Prefer Taskfile commands over raw `go` commands.

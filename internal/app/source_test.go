@@ -30,10 +30,17 @@ func TestUseRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertTempRepoRemoved(t, cloner.dest)
-	if !strings.Contains(stdout.String(), "Loading repository") {
-		t.Fatalf("stdout missing loading indicator:\n%s", stdout.String())
+	output := stdout.String()
+	if !strings.HasPrefix(output, builder.Banner()) {
+		t.Fatalf("stdout should start with banner:\n%s", output)
 	}
+	if count := strings.Count(output, builder.Banner()); count != 1 {
+		t.Fatalf("banner count = %d, want 1:\n%s", count, output)
+	}
+	if loading := strings.Index(output, "Loading repository"); loading < len(builder.Banner()) {
+		t.Fatalf("loading indicator should be printed after banner:\n%s", output)
+	}
+	assertTempRepoRemoved(t, cloner.dest)
 	if prompter.templateCalls != 1 {
 		t.Fatalf("template prompt calls = %d, want 1", prompter.templateCalls)
 	}
@@ -91,7 +98,8 @@ func TestUseRemoteRepositoryRequiresTemplates(t *testing.T) {
 
 func TestUseRemoteRepositoryRemovesTempDirWhenCloneFails(t *testing.T) {
 	workDir := t.TempDir()
-	cloner := &failingGitCloner{err: errors.New("network down")}
+	cloneErr := errors.New("network down")
+	cloner := &failingGitCloner{err: cloneErr}
 	var stdout bytes.Buffer
 
 	application := remoteAppForTestWithStdout(workDir, cloner, &stdout)
@@ -99,9 +107,78 @@ func TestUseRemoteRepositoryRemovesTempDirWhenCloneFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
+	if !errors.Is(err, cloneErr) {
+		t.Fatalf("error = %v, want wrapped %v", err, cloneErr)
+	}
+	output := stdout.String()
+	if !strings.HasPrefix(output, builder.Banner()) {
+		t.Fatalf("stdout should start with banner:\n%s", output)
+	}
+	if count := strings.Count(output, builder.Banner()); count != 1 {
+		t.Fatalf("banner count = %d, want 1:\n%s", count, output)
+	}
 	assertTempRepoRemoved(t, cloner.dest)
-	if !strings.Contains(stdout.String(), "Loading repository failed") {
-		t.Fatalf("stdout missing failed loading indicator:\n%s", stdout.String())
+}
+
+func TestUseRemoteRepositoryCancelsClone(t *testing.T) {
+	workDir := t.TempDir()
+	var stdout bytes.Buffer
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	cloner := &cancelingGitCloner{cancel: cancel}
+
+	application := remoteAppForTestWithStdout(workDir, cloner, &stdout)
+	err := application.Use(ctx, "https://example.test/repo.git", &remotePrompter{})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
+	}
+	assertTempRepoRemoved(t, cloner.dest)
+}
+
+func TestUseRemoteRepositoryWaitsForCloneAfterCancellation(t *testing.T) {
+	workDir := t.TempDir()
+	var stdout bytes.Buffer
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	cloner := newBlockingCancelGitCloner()
+	application := remoteAppForTestWithStdout(workDir, cloner, &stdout)
+	errCh := make(chan error, 1)
+
+	go func() {
+		errCh <- application.Use(ctx, "https://example.test/repo.git", &remotePrompter{})
+	}()
+
+	<-cloner.started
+	cancel()
+	<-cloner.cancelled
+	select {
+	case err := <-errCh:
+		t.Fatalf("Use returned before clone completed: %v", err)
+	default:
+	}
+
+	cloner.release()
+	err := <-errCh
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
+	}
+	assertTempRepoRemoved(t, cloner.dest)
+}
+
+func TestRunWithLoadingUsesAccessibleModeForNonTerminalOutput(t *testing.T) {
+	var stdout bytes.Buffer
+	err := runWithLoading(t.Context(), &stdout, "Loading repository...", func(context.Context) error {
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "Loading repository") {
+		t.Fatalf("stdout missing loading title:\n%s", output)
+	}
+	if strings.Contains(output, "[?2026") || strings.Contains(output, "[?2027") || strings.Contains(output, "]11;") {
+		t.Fatalf("stdout included terminal query sequences:\n%q", output)
 	}
 }
 
@@ -223,6 +300,48 @@ type failingGitCloner struct {
 func (c *failingGitCloner) Clone(_ context.Context, _, dest string) error {
 	c.dest = dest
 	return c.err
+}
+
+type cancelingGitCloner struct {
+	dest   string
+	cancel context.CancelFunc
+}
+
+func (c *cancelingGitCloner) Clone(ctx context.Context, _, dest string) error {
+	c.dest = dest
+	if c.cancel != nil {
+		c.cancel()
+	}
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+type blockingCancelGitCloner struct {
+	dest      string
+	started   chan struct{}
+	cancelled chan struct{}
+	released  chan struct{}
+}
+
+func newBlockingCancelGitCloner() *blockingCancelGitCloner {
+	return &blockingCancelGitCloner{
+		started:   make(chan struct{}),
+		cancelled: make(chan struct{}),
+		released:  make(chan struct{}),
+	}
+}
+
+func (c *blockingCancelGitCloner) Clone(ctx context.Context, _, dest string) error {
+	c.dest = dest
+	close(c.started)
+	<-ctx.Done()
+	close(c.cancelled)
+	<-c.released
+	return ctx.Err()
+}
+
+func (c *blockingCancelGitCloner) release() {
+	close(c.released)
 }
 
 func copyTree(source, dest string) error {
