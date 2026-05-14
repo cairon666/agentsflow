@@ -137,6 +137,55 @@ func TestUseCommandRejectsInvalidFlags(t *testing.T) {
 	}
 }
 
+func TestUseCommandInputErrorsIncludeUsage(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "missing argument",
+			args: []string{"use"},
+			want: "missing template or repository argument",
+		},
+		{
+			name: "unknown flag",
+			args: []string{"use", "https://github.com/cairon666/agentsflow", "--dont-know-flag"},
+			want: "unknown flag: --dont-know-flag",
+		},
+		{
+			name: "extra argument",
+			args: []string{"use", "template.yaml", "extra.yaml"},
+			want: "expected 1 template or repository argument, received 2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := NewRootCommand()
+			cmd.SetArgs(tt.args)
+
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			got := err.Error()
+			for _, want := range []string{
+				tt.want,
+				"Usage:",
+				"agentsflow use <template|repo> [flags]",
+				"--target",
+				"--bind",
+				"--scope",
+			} {
+				if !strings.Contains(got, want) {
+					t.Fatalf("error missing %q:\n%s", want, got)
+				}
+			}
+		})
+	}
+}
+
 func TestUseCommandYesDoesNotBypassConflicts(t *testing.T) {
 	workDir := t.TempDir()
 	templatePath := writeUseTemplate(t, workDir, singleSlotTemplate)
@@ -156,6 +205,9 @@ func TestUseCommandYesDoesNotBypassConflicts(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "install plan has conflicts") {
 		t.Fatalf("error = %q", err)
+	}
+	if strings.Contains(err.Error(), "Usage:") {
+		t.Fatalf("runtime error unexpectedly included usage:\n%s", err)
 	}
 	if strings.Contains(stdout.String(), "Done.") {
 		t.Fatalf("conflicting install completed unexpectedly:\n%s", stdout.String())

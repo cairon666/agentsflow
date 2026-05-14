@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -21,7 +22,7 @@ func newUseCommandWithPrompter(application app.App, fallback builder.Prompter) *
 	cmd := &cobra.Command{
 		Use:   "use <template|repo>",
 		Short: "Interactively install an agentsflow template",
-		Args:  cobra.ExactArgs(1),
+		Args:  validateUseArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prompter, err := options.prompter(application)
 			if err != nil {
@@ -30,11 +31,29 @@ func newUseCommandWithPrompter(application app.App, fallback builder.Prompter) *
 			return application.Use(cmd.Context(), args[0], prompter)
 		},
 	}
+	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return newUseInputError(cmd, err)
+	})
 	cmd.Flags().StringVar(&options.target, "target", "", "Target CLI tool to configure")
 	cmd.Flags().StringArrayVar(&options.binds, "bind", nil, "Bind a model slot to a model, as slot=model")
 	cmd.Flags().StringVar(&options.scope, "scope", "", "Installation scope: project or global")
 	cmd.Flags().BoolVar(&options.yes, "yes", false, "Approve writing files without prompting")
 	return cmd
+}
+
+func validateUseArgs(cmd *cobra.Command, args []string) error {
+	switch len(args) {
+	case 1:
+		return nil
+	case 0:
+		return newUseInputError(cmd, errors.New("missing template or repository argument"))
+	default:
+		return newUseInputError(cmd, fmt.Errorf("expected 1 template or repository argument, received %d", len(args)))
+	}
+}
+
+func newUseInputError(cmd *cobra.Command, err error) error {
+	return fmt.Errorf("%w\n\n%s", err, strings.TrimRight(cmd.UsageString(), "\n"))
 }
 
 type useOptions struct {
