@@ -8,7 +8,7 @@
 
 ```sh
 npm install -g agentsflow
-agentsflow --version
+agentsflow --version 
 ```
 
 ## Release
