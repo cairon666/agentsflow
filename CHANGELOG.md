@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/cairon666/agentsflow/compare/v0.1.1...v0.1.2) (2026-05-14)
+
+
+### Bug Fixes
+
+* test publish afeter answer npm ([c5dd2c5](https://github.com/cairon666/agentsflow/commit/c5dd2c5607ca7d47786a558f6ea99f7fc9f17968))
+
 ## [0.1.1](https://github.com/cairon666/agentsflow/compare/v0.1.0...v0.1.1) (2026-05-13)
 
 
