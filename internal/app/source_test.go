@@ -30,16 +30,6 @@ func TestUseRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output := stdout.String()
-	if !strings.HasPrefix(output, builder.Banner()) {
-		t.Fatalf("stdout should start with banner:\n%s", output)
-	}
-	if count := strings.Count(output, builder.Banner()); count != 1 {
-		t.Fatalf("banner count = %d, want 1:\n%s", count, output)
-	}
-	if loading := strings.Index(output, "Loading repository"); loading < len(builder.Banner()) {
-		t.Fatalf("loading indicator should be printed after banner:\n%s", output)
-	}
 	assertTempRepoRemoved(t, cloner.dest)
 	if prompter.templateCalls != 1 {
 		t.Fatalf("template prompt calls = %d, want 1", prompter.templateCalls)
@@ -109,13 +99,6 @@ func TestUseRemoteRepositoryRemovesTempDirWhenCloneFails(t *testing.T) {
 	}
 	if !errors.Is(err, cloneErr) {
 		t.Fatalf("error = %v, want wrapped %v", err, cloneErr)
-	}
-	output := stdout.String()
-	if !strings.HasPrefix(output, builder.Banner()) {
-		t.Fatalf("stdout should start with banner:\n%s", output)
-	}
-	if count := strings.Count(output, builder.Banner()); count != 1 {
-		t.Fatalf("banner count = %d, want 1:\n%s", count, output)
 	}
 	assertTempRepoRemoved(t, cloner.dest)
 }

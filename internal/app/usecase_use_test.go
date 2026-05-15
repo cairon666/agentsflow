@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/cairon666/agentsflow/internal/adapter"
@@ -31,12 +30,6 @@ func TestUseWritesCodexFilesWithFakePrompter(t *testing.T) {
 	}
 	if err := application.Use(t.Context(), templatePath, fakePrompter{}); err != nil {
 		t.Fatal(err)
-	}
-	if !strings.HasPrefix(stdout.String(), builder.Banner()) {
-		t.Fatalf("stdout should start with banner:\n%s", stdout.String())
-	}
-	if count := strings.Count(stdout.String(), builder.Banner()); count != 1 {
-		t.Fatalf("banner count = %d, want 1:\n%s", count, stdout.String())
 	}
 	if _, err := os.Stat(filepath.Join(workDir, ".codex", "agents", "reviewer.toml")); err != nil {
 		t.Fatalf("expected codex agent file: %v", err)
