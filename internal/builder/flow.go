@@ -49,11 +49,9 @@ type ModelSlotValidator interface {
 
 // Run collects all decisions needed to render a flow.
 func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer) (Choices, error) {
-	fmt.Fprintf(out, "┌   agentsflow\n")
-	fmt.Fprintf(out, "│\n")
-	fmt.Fprintf(out, "◇  Template: %s (version %d)\n", flow.ID, flow.Version)
-	fmt.Fprintf(out, "◇  Agents: %d\n", len(flow.Agents))
-	fmt.Fprintf(out, "◇  Model slots: %d\n", len(flow.ModelSlots))
+	if err := writef(out, "┌   agentsflow\n│\n◇  Template: %s (version %d)\n◇  Agents: %d\n◇  Model slots: %d\n", flow.ID, flow.Version, len(flow.Agents), len(flow.ModelSlots)); err != nil {
+		return Choices{}, fmt.Errorf("write flow summary: %w", err)
+	}
 	if validator, ok := prompter.(ModelSlotValidator); ok {
 		if err := validator.ValidateModelSlots(flow.ModelSlots); err != nil {
 			return Choices{}, fmt.Errorf("validate model bindings: %w", err)
@@ -63,7 +61,9 @@ func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer)
 	if err != nil {
 		return Choices{}, fmt.Errorf("choose target: %w", err)
 	}
-	fmt.Fprintf(out, "◇  Selected target: %s\n", target)
+	if err := writef(out, "◇  Selected target: %s\n", target); err != nil {
+		return Choices{}, fmt.Errorf("write selected target: %w", err)
+	}
 	models := make(binding.Models, len(flow.ModelSlots))
 	for _, slot := range sortedSlots(flow) {
 		model, err := prompter.AskModel(slot, flow.ModelSlots[slot].Description)
@@ -74,14 +74,23 @@ func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer)
 			return Choices{}, fmt.Errorf("model for slot %q is required", slot)
 		}
 		models[slot] = model
-		fmt.Fprintf(out, "◇  Slot %s: %s\n", slot, model)
+		if err := writef(out, "◇  Slot %s: %s\n", slot, model); err != nil {
+			return Choices{}, fmt.Errorf("write selected model: %w", err)
+		}
 	}
 	scope, err := prompter.ChooseScope()
 	if err != nil {
 		return Choices{}, fmt.Errorf("choose scope: %w", err)
 	}
-	fmt.Fprintf(out, "◇  Installation scope: %s\n\n", scope)
+	if err := writef(out, "◇  Installation scope: %s\n\n", scope); err != nil {
+		return Choices{}, fmt.Errorf("write installation scope: %w", err)
+	}
 	return Choices{Target: target, Scope: scope, Models: models}, nil
+}
+
+func writef(out io.Writer, format string, args ...any) error {
+	_, err := fmt.Fprintf(out, format, args...)
+	return err
 }
 
 // Banner returns the startup ASCII art.

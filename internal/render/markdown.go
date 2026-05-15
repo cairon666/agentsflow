@@ -13,7 +13,7 @@ func Frontmatter(values map[string]any) string {
 	b.WriteString("---\n")
 	data, err := yaml.Marshal(values)
 	if err != nil {
-		b.WriteString(fmt.Sprintf("error: %q\n", err.Error()))
+		fmt.Fprintf(&b, "error: %q\n", err.Error())
 	} else {
 		b.Write(data)
 	}

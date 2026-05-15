@@ -1,6 +1,7 @@
 package install
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ func (w Writer) Apply(plan Plan) error {
 	return nil
 }
 
-func writeAtomic(path string, data []byte) error {
+func writeAtomic(path string, data []byte) (err error) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create directory %q: %w", dir, err)
@@ -48,9 +49,19 @@ func writeAtomic(path string, data []byte) error {
 		return fmt.Errorf("create temp file for %q: %w", path, err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	shouldRemove := true
+	defer func() {
+		if shouldRemove {
+			err = errors.Join(err, os.Remove(tmpName))
+		}
+	}()
 	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
+		if closeErr := tmp.Close(); closeErr != nil {
+			return errors.Join(
+				fmt.Errorf("write temp file for %q: %w", path, err),
+				fmt.Errorf("close temp file for %q: %w", path, closeErr),
+			)
+		}
 		return fmt.Errorf("write temp file for %q: %w", path, err)
 	}
 	if err := tmp.Close(); err != nil {
@@ -59,5 +70,6 @@ func writeAtomic(path string, data []byte) error {
 	if err := os.Rename(tmpName, path); err != nil {
 		return fmt.Errorf("replace %q: %w", path, err)
 	}
+	shouldRemove = false
 	return nil
 }

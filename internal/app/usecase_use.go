@@ -14,7 +14,9 @@ import (
 
 // Use loads a template, asks the user for choices, renders, and installs files.
 func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) error {
-	fmt.Fprint(a.Stdout, builder.Banner())
+	if err := a.print(builder.Banner()); err != nil {
+		return fmt.Errorf("write banner: %w", err)
+	}
 
 	path, cleanup, err := a.resolveTemplateSource(ctx, source, prompter)
 	if err != nil {
@@ -28,7 +30,9 @@ func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) 
 	}
 	diags := schema.Validate(flow)
 	if len(diags) > 0 {
-		fmt.Fprint(a.Stdout, diagnostic.FormatMany(diags))
+		if err := a.print(diagnostic.FormatMany(diags)); err != nil {
+			return fmt.Errorf("write template diagnostics: %w", err)
+		}
 	}
 	if diagnostic.HasErrors(diags) {
 		return fmt.Errorf("template validation failed")
@@ -51,21 +55,27 @@ func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) 
 	}
 	targetDiags := targetAdapter.Validate(ctx, irFlow)
 	if len(targetDiags) > 0 {
-		fmt.Fprint(a.Stdout, diagnostic.FormatMany(targetDiags))
+		if err := a.print(diagnostic.FormatMany(targetDiags)); err != nil {
+			return fmt.Errorf("write target diagnostics: %w", err)
+		}
 	}
 	if diagnostic.HasErrors(targetDiags) {
 		return fmt.Errorf("target validation failed")
 	}
 	plan, renderDiags := targetAdapter.Render(ctx, renderInput)
 	if len(renderDiags) > 0 {
-		fmt.Fprint(a.Stdout, diagnostic.FormatMany(renderDiags))
+		if err := a.print(diagnostic.FormatMany(renderDiags)); err != nil {
+			return fmt.Errorf("write render diagnostics: %w", err)
+		}
 	}
 	if diagnostic.HasErrors(renderDiags) {
 		return fmt.Errorf("target rendering failed")
 	}
 	summary := builder.Summary(plan)
 	if plan.HasConflicts() {
-		fmt.Fprintln(a.Stdout, summary)
+		if err := a.println(summary); err != nil {
+			return fmt.Errorf("write install summary: %w", err)
+		}
 		return fmt.Errorf("install plan has conflicts; no files were written")
 	}
 	ok, err := prompter.Confirm(summary)
@@ -73,15 +83,31 @@ func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) 
 		return fmt.Errorf("confirm install: %w", err)
 	}
 	if !ok {
-		fmt.Fprintln(a.Stdout, "Cancelled. No files were written.")
+		if err := a.println("Cancelled. No files were written."); err != nil {
+			return fmt.Errorf("write cancellation message: %w", err)
+		}
 		return nil
 	}
-	fmt.Fprintln(a.Stdout, summary)
+	if err := a.println(summary); err != nil {
+		return fmt.Errorf("write install summary: %w", err)
+	}
 	if err := a.Writer.Apply(plan); err != nil {
 		return err
 	}
-	fmt.Fprintln(a.Stdout, "Done.")
+	if err := a.println("Done."); err != nil {
+		return fmt.Errorf("write completion message: %w", err)
+	}
 	return nil
+}
+
+func (a App) print(args ...any) error {
+	_, err := fmt.Fprint(a.Stdout, args...)
+	return err
+}
+
+func (a App) println(args ...any) error {
+	_, err := fmt.Fprintln(a.Stdout, args...)
+	return err
 }
 
 func targetOptions(registry adapter.Registry) []builder.TargetOption {
