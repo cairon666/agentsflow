@@ -1,24 +1,19 @@
 package app
 
 import (
-	"context"
 	"io"
 
 	"github.com/cairon666/agentsflow/internal/adapter"
 	"github.com/cairon666/agentsflow/internal/install"
+	"github.com/cairon666/agentsflow/internal/source"
 )
-
-// GitCloner clones a git repository into a destination directory.
-type GitCloner interface {
-	Clone(context.Context, string, string) error
-}
 
 // App owns the CLI use cases.
 type App struct {
-	Registry  adapter.Registry
-	Writer    install.Writer
-	Stdout    io.Writer
-	WorkDir   string
-	HomeDir   string
-	GitCloner GitCloner
+	Registry       adapter.Registry
+	Writer         install.Writer
+	SourceResolver source.Resolver
+	Stdout         io.Writer
+	WorkDir        string
+	HomeDir        string
 }
