@@ -7,6 +7,7 @@ import (
 
 	"github.com/cairon666/agentsflow/internal/adapter"
 	"github.com/cairon666/agentsflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/console"
 	"github.com/cairon666/agentsflow/internal/diagnostic"
 	"github.com/cairon666/agentsflow/internal/schema"
 	flowtemplate "github.com/cairon666/agentsflow/internal/template"
@@ -14,6 +15,8 @@ import (
 
 // Use loads a template, asks the user for choices, renders, and installs files.
 func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) error {
+	history := console.NewHistoryWriter(a.Stdout)
+
 	if err := a.print(builder.Banner()); err != nil {
 		return fmt.Errorf("write banner: %w", err)
 	}
@@ -88,15 +91,11 @@ func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) 
 		}
 		return nil
 	}
-	if err := a.println(summary); err != nil {
-		return fmt.Errorf("write install summary: %w", err)
-	}
 	if err := a.Writer.Apply(plan); err != nil {
 		return err
 	}
-	if err := a.println("Done."); err != nil {
-		return fmt.Errorf("write completion message: %w", err)
-	}
+
+	history.WriteHistoryf("Done.\n").WriteHistorySpace()
 	return nil
 }
 

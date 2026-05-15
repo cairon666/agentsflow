@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/cairon666/agentsflow/internal/binding"
+	"github.com/cairon666/agentsflow/internal/console"
 	"github.com/cairon666/agentsflow/internal/install"
 	"github.com/cairon666/agentsflow/internal/ir"
 )
@@ -49,9 +50,8 @@ type ModelSlotValidator interface {
 
 // Run collects all decisions needed to render a flow.
 func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer) (Choices, error) {
-	if err := writef(out, "┌   agentsflow\n│\n◇  Template: %s (version %d)\n◇  Agents: %d\n◇  Model slots: %d\n", flow.ID, flow.Version, len(flow.Agents), len(flow.ModelSlots)); err != nil {
-		return Choices{}, fmt.Errorf("write flow summary: %w", err)
-	}
+	history := console.NewHistoryWriter(out).WriteHistoryf("Template: %s\n", flow.ID)
+
 	if validator, ok := prompter.(ModelSlotValidator); ok {
 		if err := validator.ValidateModelSlots(flow.ModelSlots); err != nil {
 			return Choices{}, fmt.Errorf("validate model bindings: %w", err)
@@ -61,9 +61,8 @@ func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer)
 	if err != nil {
 		return Choices{}, fmt.Errorf("choose target: %w", err)
 	}
-	if err := writef(out, "◇  Selected target: %s\n", target); err != nil {
-		return Choices{}, fmt.Errorf("write selected target: %w", err)
-	}
+	history.WriteHistoryf("Target: %s\n", target)
+
 	models := make(binding.Models, len(flow.ModelSlots))
 	for _, slot := range sortedSlots(flow) {
 		model, err := prompter.AskModel(slot, flow.ModelSlots[slot].Description)
@@ -74,23 +73,15 @@ func Run(flow ir.Flow, targets []TargetOption, prompter Prompter, out io.Writer)
 			return Choices{}, fmt.Errorf("model for slot %q is required", slot)
 		}
 		models[slot] = model
-		if err := writef(out, "◇  Slot %s: %s\n", slot, model); err != nil {
-			return Choices{}, fmt.Errorf("write selected model: %w", err)
-		}
+		history.WriteHistoryf("Model for %s: %s\n", slot, model)
 	}
 	scope, err := prompter.ChooseScope()
 	if err != nil {
 		return Choices{}, fmt.Errorf("choose scope: %w", err)
 	}
-	if err := writef(out, "◇  Installation scope: %s\n\n", scope); err != nil {
-		return Choices{}, fmt.Errorf("write installation scope: %w", err)
-	}
-	return Choices{Target: target, Scope: scope, Models: models}, nil
-}
+	history.WriteHistoryf("Installation scope: %s\n", scope).WriteHistorySpace()
 
-func writef(out io.Writer, format string, args ...any) error {
-	_, err := fmt.Fprintf(out, format, args...)
-	return err
+	return Choices{Target: target, Scope: scope, Models: models}, nil
 }
 
 // Banner returns the startup ASCII art.
@@ -100,7 +91,7 @@ func Banner() string {
 ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   █████╗  ██║     ██║   ██║██║ █╗ ██║
 ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   ██╔══╝  ██║     ██║   ██║██║███╗██║
 ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   ██║     ███████╗╚██████╔╝╚███╔███╔╝
-╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝ 
+╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝
 
 `
 }
@@ -111,10 +102,9 @@ func Summary(plan install.Plan) string {
 	for _, action := range plan.Actions {
 		counts[action.Kind]++
 	}
+
 	summary := fmt.Sprintf(
-		"Target: %s\nScope: %s\nCreate: %d\nUpdate: %d\nSkip: %d\nConflicts: %d\n",
-		plan.Target,
-		plan.Scope,
+		"Create: %d\nUpdate: %d\nSkip: %d\nConflicts: %d\n",
 		counts[install.ActionCreate],
 		counts[install.ActionUpdate],
 		counts[install.ActionSkip],

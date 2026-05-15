@@ -48,7 +48,7 @@ func (p HuhPrompter) ChooseTemplate(templates []TemplateOption) (string, error) 
 // AskModel asks for a model binding.
 func (p HuhPrompter) AskModel(slot, description string) (string, error) {
 	var value string
-	title := fmt.Sprintf("Model for slot %s", slot)
+	title := fmt.Sprintf("Model for %s", slot)
 	if description != "" {
 		title += "\n" + description
 	}

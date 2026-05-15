@@ -76,8 +76,8 @@ func TestUseCommandPromptsForMissingFlags(t *testing.T) {
 	}
 	output := stdout.String()
 	for _, want := range []string{
-		"Slot main: sonnet",
-		"Slot code: opus",
+		"Model for main: sonnet",
+		"Model for code: opus",
 		"Installation scope: project",
 	} {
 		if !strings.Contains(output, want) {

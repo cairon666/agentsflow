@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/x/term"
 
 	"github.com/cairon666/agentsflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/console"
 )
 
 const templateRepoDir = ".agentsflow"
@@ -53,6 +54,8 @@ func (a App) resolveGitTemplate(ctx context.Context, source string, prompter bui
 		cleanup()
 		return "", nil, err
 	}
+
+	console.NewHistoryWriter(a.Stdout).WriteHistorySpace().WriteHistoryf("Source: %s\n", source)
 
 	options, err := discoverTemplateOptions(repoDir)
 	if err != nil {
