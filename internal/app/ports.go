@@ -12,6 +12,7 @@ import (
 // Reporter owns user-facing output for app use cases.
 type Reporter interface {
 	Banner()
+	HistoryBlock(text string)
 	Historyf(format string, args ...any)
 	HistorySpace()
 	Message(args ...any)

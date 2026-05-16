@@ -31,6 +31,11 @@ func (r Reporter) Historyf(format string, args ...any) {
 	mustWrite(WriteHistoryf(r.out, format, args...))
 }
 
+// HistoryBlock writes every line as persistent history.
+func (r Reporter) HistoryBlock(text string) {
+	mustWrite(WriteHistoryBlock(r.out, text))
+}
+
 // HistorySpace writes a persistent history spacer line.
 func (r Reporter) HistorySpace() {
 	mustWrite(WriteHistorySpace(r.out))

@@ -32,10 +32,11 @@ const (
 
 // Action is one planned filesystem operation.
 type Action struct {
-	Path     string
-	Kind     ActionKind
-	Content  []byte
-	Strategy FileStrategy
+	Path            string
+	Kind            ActionKind
+	Content         []byte
+	ExistingContent []byte
+	Strategy        FileStrategy
 }
 
 // DesiredFile is a target-rendered file before install planning.

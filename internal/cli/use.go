@@ -29,9 +29,11 @@ func newUseCommandWithPrompter(application app.App, fallback choices.Prompter) *
 			if err != nil {
 				return err
 			}
-			return application.Use(cmd.Context(), args[0], choiceCollector{
+			return application.UseWithOptions(cmd.Context(), args[0], choiceCollector{
 				prompter: prompter,
 				reporter: application.Reporter,
+			}, app.UseOptions{
+				DryRun: options.dryRun,
 			})
 		},
 	}
@@ -42,6 +44,7 @@ func newUseCommandWithPrompter(application app.App, fallback choices.Prompter) *
 	cmd.Flags().StringArrayVar(&options.binds, "bind", nil, "Bind a model slot to a model, as slot=model")
 	cmd.Flags().StringVar(&options.scope, "scope", "", "Installation scope: project or global")
 	cmd.Flags().BoolVar(&options.yes, "yes", false, "Approve writing files without prompting")
+	cmd.Flags().BoolVar(&options.dryRun, "dry-run", false, "Preview files without writing them")
 	return cmd
 }
 
@@ -65,6 +68,7 @@ type useOptions struct {
 	binds    []string
 	scope    string
 	yes      bool
+	dryRun   bool
 	fallback choices.Prompter
 }
 

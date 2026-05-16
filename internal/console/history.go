@@ -3,6 +3,7 @@ package console
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 )
@@ -19,6 +20,26 @@ func WriteHistoryf(out io.Writer, format string, args ...any) error {
 func WriteHistorySpace(out io.Writer) error {
 	_, err := fmt.Fprintln(out, historyMarker)
 	return err
+}
+
+// WriteHistoryBlock writes every line with the persistent history marker.
+func WriteHistoryBlock(out io.Writer, text string) error {
+	text = strings.TrimRight(text, "\n")
+	if text == "" {
+		return WriteHistorySpace(out)
+	}
+	for _, line := range strings.Split(text, "\n") {
+		if line == "" {
+			if err := WriteHistorySpace(out); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := WriteHistoryf(out, "%s\n", line); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type HistoryWriter struct {
@@ -54,6 +75,15 @@ func (hw *HistoryWriter) WriteHistoryBlockf(format string, args ...any) *History
 	}
 
 	return hw.WriteHistorySpace().WriteHistoryf(format, args...).WriteHistorySpace()
+}
+
+func (hw *HistoryWriter) WriteHistoryBlock(text string) *HistoryWriter {
+	if hw.err != nil {
+		return hw
+	}
+
+	hw.err = WriteHistoryBlock(hw.out, text)
+	return hw
 }
 
 func (hw *HistoryWriter) Error() error {

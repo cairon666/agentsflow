@@ -224,9 +224,68 @@ func TestUseCommandHelpShowsFlags(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"--target", "--bind", "--scope", "--yes"} {
+	for _, want := range []string{"--target", "--bind", "--scope", "--yes", "--dry-run"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("help missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestUseCommandDryRunPrintsPreviewWithoutWritingFiles(t *testing.T) {
+	workDir := t.TempDir()
+	templatePath := writeUseTemplate(t, workDir, implicitMainTemplate)
+	configPath := filepath.Join(workDir, ".codex", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	originalConfig := "model = 'old'\ncustom = true\n"
+	if err := os.WriteFile(configPath, []byte(originalConfig), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	cmd := newUseCommandWithPrompter(appForUseTest(workDir, &stdout), failingPrompter{})
+	cmd.SetArgs([]string{
+		templatePath,
+		"--target", "codex",
+		"--bind", "main=sonnet",
+		"--scope", "project",
+		"--dry-run",
+		"--yes",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != originalConfig {
+		t.Fatalf("dry run changed config:\n%s", content)
+	}
+	if _, err := os.Stat(filepath.Join(workDir, "AGENTS.md")); !os.IsNotExist(err) {
+		t.Fatalf("dry run created AGENTS.md, stat err = %v", err)
+	}
+	output := stdout.String()
+	assertOutputContains(t, output, []string{
+		"Files:",
+		"AGENTS.md (create)",
+		"--- planned content ---",
+		"# Test",
+		"--- merge diff ---",
+		"-model = 'old'",
+		"+model = 'sonnet'",
+	})
+	for _, noise := range []string{
+		"Dry run install plan:",
+		"Create files:",
+		"Clean directories:",
+		"Dry run complete. No files were written.",
+		"Done.",
+	} {
+		if strings.Contains(output, noise) {
+			t.Fatalf("dry run output contains %q:\n%s", noise, output)
 		}
 	}
 }

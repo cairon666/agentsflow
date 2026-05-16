@@ -28,6 +28,9 @@ func classifyAction(path string, content []byte, strategy FileStrategy, cleanDir
 		action.Kind = ActionCreate
 		return action
 	}
+	if err == nil {
+		action.ExistingContent = existing
+	}
 	switch {
 	case err == nil && bytes.Equal(existing, content):
 		action.Kind = ActionSkip

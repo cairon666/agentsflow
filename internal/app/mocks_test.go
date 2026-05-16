@@ -74,6 +74,46 @@ func (_c *MockReporter_Banner_Call) RunAndReturn(run func()) *MockReporter_Banne
 	return _c
 }
 
+// HistoryBlock provides a mock function for the type MockReporter
+func (_mock *MockReporter) HistoryBlock(text string) {
+	_mock.Called(text)
+	return
+}
+
+// MockReporter_HistoryBlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HistoryBlock'
+type MockReporter_HistoryBlock_Call struct {
+	*mock.Call
+}
+
+// HistoryBlock is a helper method to define mock.On call
+//   - text string
+func (_e *MockReporter_Expecter) HistoryBlock(text interface{}) *MockReporter_HistoryBlock_Call {
+	return &MockReporter_HistoryBlock_Call{Call: _e.mock.On("HistoryBlock", text)}
+}
+
+func (_c *MockReporter_HistoryBlock_Call) Run(run func(text string)) *MockReporter_HistoryBlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockReporter_HistoryBlock_Call) Return() *MockReporter_HistoryBlock_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockReporter_HistoryBlock_Call) RunAndReturn(run func(text string)) *MockReporter_HistoryBlock_Call {
+	_c.Run(run)
+	return _c
+}
+
 // HistorySpace provides a mock function for the type MockReporter
 func (_mock *MockReporter) HistorySpace() {
 	_mock.Called()

@@ -9,8 +9,18 @@ import (
 	"github.com/cairon666/agentsflow/internal/install"
 )
 
+// UseOptions configures the use template flow.
+type UseOptions struct {
+	DryRun bool
+}
+
 // Use loads a template, asks the user for choices, renders, and installs files.
 func (a App) Use(ctx context.Context, source string, choices ChoiceCollector) error {
+	return a.UseWithOptions(ctx, source, choices, UseOptions{})
+}
+
+// UseWithOptions loads a template, asks the user for choices, renders, and installs files.
+func (a App) UseWithOptions(ctx context.Context, source string, choices ChoiceCollector, options UseOptions) error {
 	a.Reporter.Banner()
 
 	resolved, err := a.TemplateSource.Resolve(ctx, source, choices, a.Reporter)
@@ -62,14 +72,26 @@ func (a App) Use(ctx context.Context, source string, choices ChoiceCollector) er
 	}
 	plan := a.InstallPlanner.Build(artifacts)
 	summary := install.FormatSummary(plan)
+	if options.DryRun {
+		a.Reporter.HistoryBlock(summary)
+		if preview := install.FormatDryRunFilePreview(plan); preview != "" {
+			a.Reporter.MessageLine(preview)
+		}
+		if plan.HasConflicts() {
+			return fmt.Errorf("install plan has conflicts; no files were written")
+		}
+		return nil
+	}
+
 	if plan.HasConflicts() {
-		a.Reporter.MessageLine(summary)
+		a.Reporter.HistoryBlock(summary)
 		return fmt.Errorf("install plan has conflicts; no files were written")
 	}
 	ok, err := choices.Confirm(ctx, summary)
 	if err != nil {
 		return fmt.Errorf("confirm install: %w", err)
 	}
+	a.Reporter.HistoryBlock(summary)
 	if !ok {
 		a.Reporter.MessageLine("Cancelled. No files were written.")
 		return nil
@@ -78,8 +100,9 @@ func (a App) Use(ctx context.Context, source string, choices ChoiceCollector) er
 		return err
 	}
 
-	a.Reporter.Historyf("Done.\n")
 	a.Reporter.HistorySpace()
+	a.Reporter.Historyf("Done.\n")
+
 	return nil
 }
 

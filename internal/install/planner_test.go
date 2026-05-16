@@ -63,6 +63,9 @@ func TestBuildPlanMergeStrategyUpdatesExistingFile(t *testing.T) {
 	if plan.Actions[0].Strategy != StrategyMerge {
 		t.Fatalf("strategy = %q, want merge", plan.Actions[0].Strategy)
 	}
+	if string(plan.Actions[0].ExistingContent) != `{"model":"old"}` {
+		t.Fatalf("existing content = %q, want old file content", plan.Actions[0].ExistingContent)
+	}
 }
 
 func TestBuildPlanOverwriteStrategyOverwritesExistingDifferentFile(t *testing.T) {
