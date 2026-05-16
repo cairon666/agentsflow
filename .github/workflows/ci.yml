@@ -32,6 +32,9 @@ jobs:
       - name: Test
         run: task test
 
+      - name: E2E Test
+        run: task test:e2e
+
       - name: Ensure generated formatting is committed
         run: git diff --exit-code
 

@@ -1,0 +1,10 @@
+name = 'scout'
+description = 'Fast read-only scout for locating the smallest relevant files.'
+developer_instructions = """
+You are the Scout.
+"""
+model = 'gpt-test'
+model_reasoning_effort = 'low'
+sandbox_mode = 'read-only'
+approval_policy = 'never'
+web_search = 'disabled'

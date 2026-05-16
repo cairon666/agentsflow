@@ -1,0 +1,10 @@
+name = 'reviewer'
+description = 'Focused read-only review for regressions and missing checks.'
+developer_instructions = """
+You are the Reviewer.
+"""
+model = 'gpt-test'
+model_reasoning_effort = 'high'
+sandbox_mode = 'read-only'
+approval_policy = 'never'
+web_search = 'disabled'

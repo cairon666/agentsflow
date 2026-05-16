@@ -1,0 +1,13 @@
+name = 'implementer'
+description = 'Makes a small focused code change and runs the nearest validation.'
+developer_instructions = """
+You are the Implementer.
+"""
+model = 'gpt-test'
+model_reasoning_effort = 'medium'
+sandbox_mode = 'workspace-write'
+approval_policy = 'on-request'
+web_search = 'disabled'
+
+[sandbox_workspace_write]
+network_access = false

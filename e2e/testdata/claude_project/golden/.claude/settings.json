@@ -1,0 +1,7 @@
+{
+  "alwaysThinkingEnabled": true,
+  "features": {
+    "multiAgent": true
+  },
+  "model": "claude-test"
+}

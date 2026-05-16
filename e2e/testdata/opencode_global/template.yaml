@@ -1,0 +1,73 @@
+id: codex_project
+version: 1
+
+model_slots:
+  main:
+    description: Default model for the primary CLI session.
+
+permission_profiles:
+  read_only:
+    description: Inspect project context without modifying files.
+    capabilities:
+      read_files: allow
+      list_files: allow
+      search_code: allow
+      inspect_metadata: allow
+      edit_files: deny
+      run_shell: deny
+      fetch_urls: deny
+      web_search: deny
+      spawn_agents: deny
+      ask_user: allow
+  workspace_write:
+    description: Edit workspace files and ask before shell commands.
+    capabilities:
+      read_files: allow
+      list_files: allow
+      search_code: allow
+      inspect_metadata: allow
+      edit_files: allow
+      run_shell: ask
+      fetch_urls: deny
+      web_search: deny
+      spawn_agents: deny
+      ask_user: allow
+
+agents:
+  scout:
+    description: Fast read-only scout for locating the smallest relevant files.
+    model_slot: main
+    reasoning_effort: low
+    permission_profile: read_only
+    prompt: |
+      You are the Scout.
+
+  implementer:
+    description: Makes a small focused code change and runs the nearest validation.
+    model_slot: main
+    reasoning_effort: medium
+    permission_profile: workspace_write
+    prompt: |
+      You are the Implementer.
+
+  reviewer:
+    description: Focused read-only review for regressions and missing checks.
+    model_slot: main
+    reasoning_effort: high
+    permission_profile: read_only
+    prompt: |
+      You are the Reviewer.
+
+instructions:
+  AGENTS.md: |
+    # AGENTS.md
+
+    ## Workflow
+
+tool_configs:
+  codex:
+    model: "{{ models.main }}"
+  claude:
+    model: "{{ models.main }}"
+  opencode:
+    model: "{{ models.main }}"
