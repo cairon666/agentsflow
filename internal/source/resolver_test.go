@@ -28,7 +28,7 @@ func TestResolveReturnsLocalTemplatePath(t *testing.T) {
 
 func TestResolveRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 	repoDir := t.TempDir()
-	writeRemoteTemplate(t, repoDir, "alpha", "template")
+	writeRemoteTemplate(t, repoDir, "alpha.yaml", "template")
 
 	var cloneDest string
 	cloner := NewMockCloner(t)
@@ -48,7 +48,7 @@ func TestResolveRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 	}
 	defer cleanup()
 
-	assertSelectedTemplate(t, path, cloneDest, "alpha")
+	assertSelectedTemplate(t, path, cloneDest, "alpha.yaml")
 	if chooser.templateCalls != 1 {
 		t.Fatalf("template prompt calls = %d, want 1", chooser.templateCalls)
 	}
@@ -61,8 +61,8 @@ func TestResolveRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 
 func TestResolveRemoteRepositorySortsAndUsesSelectedTemplate(t *testing.T) {
 	repoDir := t.TempDir()
-	writeRemoteTemplate(t, repoDir, "beta", "beta")
-	writeRemoteTemplate(t, repoDir, "alpha", "alpha")
+	writeRemoteTemplate(t, repoDir, "beta.yml", "beta")
+	writeRemoteTemplate(t, repoDir, "alpha.yaml", "alpha")
 
 	chooser := &recordingTemplateChooser{selectedLabel: "beta"}
 	var cloneDest string
@@ -82,9 +82,50 @@ func TestResolveRemoteRepositorySortsAndUsesSelectedTemplate(t *testing.T) {
 	if !reflect.DeepEqual(chooser.labels, []string{"alpha", "beta"}) {
 		t.Fatalf("template labels = %v, want [alpha beta]", chooser.labels)
 	}
-	assertSelectedTemplate(t, path, cloneDest, "beta")
+	assertSelectedTemplate(t, path, cloneDest, "beta.yml")
 	cleanup()
 	assertTempRepoRemoved(t, cloneDest)
+}
+
+func TestDiscoverTemplateOptionsSupportsFlatAndNestedYAMLFiles(t *testing.T) {
+	repoDir := t.TempDir()
+	writeRemoteTemplate(t, repoDir, "beta.yaml", "beta")
+	writeRemoteTemplate(t, repoDir, "alpha.yml", "alpha")
+	writeRemoteTemplate(t, repoDir, "team/backend.yaml", "backend")
+	writeRemoteTemplate(t, repoDir, "team/frontend.yml", "frontend")
+
+	options, err := discoverTemplateOptions(repoDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantLabels := []string{"alpha", "beta", "team/backend", "team/frontend"}
+	if !reflect.DeepEqual(templateLabels(options), wantLabels) {
+		t.Fatalf("template labels = %v, want %v", templateLabels(options), wantLabels)
+	}
+	wantValues := []string{
+		filepath.Join(repoDir, templateRepoDir, "alpha.yml"),
+		filepath.Join(repoDir, templateRepoDir, "beta.yaml"),
+		filepath.Join(repoDir, templateRepoDir, "team", "backend.yaml"),
+		filepath.Join(repoDir, templateRepoDir, "team", "frontend.yml"),
+	}
+	if !reflect.DeepEqual(templateValues(options), wantValues) {
+		t.Fatalf("template values = %v, want %v", templateValues(options), wantValues)
+	}
+}
+
+func TestDiscoverTemplateOptionsRejectsDuplicateLabels(t *testing.T) {
+	repoDir := t.TempDir()
+	writeRemoteTemplate(t, repoDir, "alpha.yml", "alpha yml")
+	writeRemoteTemplate(t, repoDir, "alpha.yaml", "alpha yaml")
+
+	_, err := discoverTemplateOptions(repoDir)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), `duplicate template label "alpha"`) {
+		t.Fatalf("error = %q, want duplicate template label", err)
+	}
 }
 
 func TestResolveRemoteRepositoryRequiresTemplates(t *testing.T) {
@@ -106,6 +147,11 @@ func TestResolveRemoteRepositoryRequiresTemplates(t *testing.T) {
 	assertTempRepoRemoved(t, cloneDest)
 	if !strings.Contains(err.Error(), "no templates found") {
 		t.Fatalf("error = %q, want no templates found", err)
+	}
+	for _, want := range []string{".agentsflow/*.{yml,yaml}", ".agentsflow/*/*.{yml,yaml}"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %q, want %s", err, want)
+		}
 	}
 	if chooser.templateCalls != 0 {
 		t.Fatalf("template prompt calls = %d, want 0", chooser.templateCalls)
@@ -229,9 +275,9 @@ func TestResolveRemoteRepositoryWaitsForCloneAfterCancellation(t *testing.T) {
 	assertTempRepoRemoved(t, cloneDest)
 }
 
-func assertSelectedTemplate(t *testing.T, path, repoDest, name string) {
+func assertSelectedTemplate(t *testing.T, path, repoDest, relPath string) {
 	t.Helper()
-	want := filepath.Join(repoDest, templateRepoDir, name, "template.yaml")
+	want := filepath.Join(repoDest, templateRepoDir, filepath.FromSlash(relPath))
 	if path != want {
 		t.Fatalf("selected template = %q, want %q", path, want)
 	}
@@ -251,15 +297,31 @@ func assertTempRepoRemoved(t *testing.T, repoDest string) {
 	}
 }
 
-func writeRemoteTemplate(t *testing.T, repoDir, name, content string) {
+func writeRemoteTemplate(t *testing.T, repoDir, relPath, content string) {
 	t.Helper()
-	path := filepath.Join(repoDir, templateRepoDir, name, "template.yaml")
+	path := filepath.Join(repoDir, templateRepoDir, filepath.FromSlash(relPath))
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func templateLabels(options []TemplateOption) []string {
+	labels := make([]string, 0, len(options))
+	for _, option := range options {
+		labels = append(labels, option.Label)
+	}
+	return labels
+}
+
+func templateValues(options []TemplateOption) []string {
+	values := make([]string, 0, len(options))
+	for _, option := range options {
+		values = append(values, option.Value)
+	}
+	return values
 }
 
 type recordingTemplateChooser struct {

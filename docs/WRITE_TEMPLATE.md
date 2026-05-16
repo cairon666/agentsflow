@@ -3,6 +3,31 @@
 Templates describe one reusable workflow and let each adapter render the native
 files for Codex, Claude Code, OpenCode, and future targets.
 
+## Git Repository Layout
+
+When `agentsflow use` receives a Git repository URL, it looks for templates in
+the repository's `.agentsflow` directory. Template files can be placed directly
+under `.agentsflow` or one directory below it:
+
+```text
+.agentsflow/*.{yml,yaml}
+.agentsflow/*/*.{yml,yaml}
+```
+
+Examples:
+
+```text
+.agentsflow/lightweight-engineering.yaml
+.agentsflow/multi-agent-engineering.yml
+.agentsflow/team/backend.yaml
+```
+
+The template selection prompt shows the path relative to `.agentsflow` without
+the file extension, such as `lightweight-engineering` or `team/backend`.
+Keep those extensionless paths unique; for example, do not include both
+`.agentsflow/team/backend.yml` and `.agentsflow/team/backend.yaml` in the same
+repository.
+
 ## Agent IDs
 
 Use kebab-case for agent IDs:

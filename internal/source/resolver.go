@@ -127,31 +127,60 @@ func (r DefaultResolver) resolveGitTemplate(ctx context.Context, source string, 
 }
 
 func discoverTemplateOptions(repoDir string) ([]TemplateOption, error) {
-	pattern := filepath.Join(repoDir, templateRepoDir, "*", "template.yaml")
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("find templates: %w", err)
+	patterns := []string{
+		filepath.Join(repoDir, templateRepoDir, "*.yml"),
+		filepath.Join(repoDir, templateRepoDir, "*.yaml"),
+		filepath.Join(repoDir, templateRepoDir, "*", "*.yml"),
+		filepath.Join(repoDir, templateRepoDir, "*", "*.yaml"),
+	}
+	matches := make([]string, 0)
+	for _, pattern := range patterns {
+		patternMatches, err := filepath.Glob(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("find templates: %w", err)
+		}
+		matches = append(matches, patternMatches...)
 	}
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("no templates found; expected %s/<name>/template.yaml", templateRepoDir)
+		return nil, fmt.Errorf("no templates found; expected %s/*.{yml,yaml} or %s/*/*.{yml,yaml}", templateRepoDir, templateRepoDir)
 	}
 	sort.Slice(matches, func(i, j int) bool {
-		return templateName(matches[i]) < templateName(matches[j])
+		left := templateLabel(repoDir, matches[i])
+		right := templateLabel(repoDir, matches[j])
+		if left == right {
+			return matches[i] < matches[j]
+		}
+		return left < right
 	})
 
 	options := make([]TemplateOption, 0, len(matches))
+	labels := make(map[string]string, len(matches))
 	for _, match := range matches {
-		name := templateName(match)
+		label := templateLabel(repoDir, match)
+		relPath := templateRelativePath(repoDir, match)
+		if existing, ok := labels[label]; ok {
+			return nil, fmt.Errorf("duplicate template label %q for %s and %s", label, existing, relPath)
+		}
+		labels[label] = relPath
 		options = append(options, TemplateOption{
 			Value: match,
-			Label: name,
+			Label: label,
 		})
 	}
 	return options, nil
 }
 
-func templateName(path string) string {
-	return filepath.Base(filepath.Dir(path))
+func templateLabel(repoDir, path string) string {
+	rel := templateRelativePath(repoDir, path)
+	return strings.TrimSuffix(rel, filepath.Ext(rel))
+}
+
+func templateRelativePath(repoDir, path string) string {
+	rel, err := filepath.Rel(filepath.Join(repoDir, templateRepoDir), path)
+	if err != nil {
+		rel = filepath.Base(path)
+	}
+	return filepath.ToSlash(rel)
 }
 
 // IsGitSource reports whether value points to a git repository source.
