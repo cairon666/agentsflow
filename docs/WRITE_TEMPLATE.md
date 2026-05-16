@@ -77,8 +77,12 @@ changing user-authored text incorrectly.
 
 ## Other IDs
 
-Model slots and permission profiles are internal template references. Prefer
-short, stable names such as `main`, `scout`, `reasoning`, `research`,
-`execution`, `read_only`, and `workspace_write`. Keep references exact: every
-`model_slot` and `permission_profile` used by an agent must exist in the
-corresponding top-level section.
+Model slots and permission profiles are internal template references. The
+`main` model slot is built in and always available, so templates do not need to
+declare `model_slots.main`. When an agent omits `model_slot`, it uses `main`.
+Declare `model_slots` only for additional slots such as `scout`, `reasoning`,
+`research`, `execution`, or `code`.
+
+Every explicit `model_slot` other than `main`, and every `permission_profile`
+used by an agent, must exist in the corresponding top-level section. Supported
+targets automatically receive the selected `models.main` value.

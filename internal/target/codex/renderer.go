@@ -141,7 +141,11 @@ func codexAgent(agent flowmodel.Agent, profile flowmodel.PermissionProfile, mode
 		cfg.SandboxWorkspaceWrite = map[string]bool{"network_access": profile.Capabilities["fetch_urls"] == "allow" || profile.Capabilities["web_search"] == "allow"}
 	}
 	if model == "" {
-		cfg.Model = fmt.Sprintf("{{ models.%s }}", agent.ModelSlot)
+		modelSlot := agent.ModelSlot
+		if modelSlot == "" {
+			modelSlot = flowmodel.MainModelSlot
+		}
+		cfg.Model = fmt.Sprintf("{{ models.%s }}", modelSlot)
 	}
 	return cfg
 }

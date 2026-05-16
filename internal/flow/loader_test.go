@@ -34,6 +34,25 @@ func TestLoadFileReturnsNormalizedFlow(t *testing.T) {
 	}
 }
 
+func TestLoadFileInjectsBuiltInMainModelSlot(t *testing.T) {
+	path := writeTemplate(t, implicitMainTemplate)
+
+	result, err := LoadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("diagnostics = %v, want none", result.Diagnostics)
+	}
+	if _, ok := result.Flow.ModelSlots[MainModelSlot]; !ok {
+		t.Fatalf("built-in main model slot was not normalized: %+v", result.Flow.ModelSlots)
+	}
+	agent := result.Flow.Agents["reviewer"]
+	if agent.ModelSlot != MainModelSlot {
+		t.Fatalf("agent model_slot = %q, want %q", agent.ModelSlot, MainModelSlot)
+	}
+}
+
 func TestLoadFileReturnsValidationDiagnostics(t *testing.T) {
 	path := writeTemplate(t, invalidTemplate)
 
@@ -107,4 +126,24 @@ instructions:
 const invalidTemplate = `
 id: test-flow
 version: 1
+`
+
+const implicitMainTemplate = `
+id: test-flow
+version: 1
+permission_profiles:
+  read:
+    description: Read profile
+    capabilities:
+      read_files: allow
+      edit_files: deny
+agents:
+  reviewer:
+    description: Reviews code
+    reasoning_effort: medium
+    permission_profile: read
+    prompt: Review code.
+instructions:
+  AGENTS.md: |
+    # Test
 `

@@ -32,6 +32,12 @@ func TestFlowResolveAgentModel(t *testing.T) {
 			want:   "gpt-main",
 		},
 		{
+			name:   "empty slot defaults to main",
+			models: map[string]string{"main": "gpt-main"},
+			agent:  Agent{},
+			want:   "gpt-main",
+		},
+		{
 			name:   "cycle returns empty",
 			models: map[string]string{},
 			agent:  Agent{ModelSlot: "cycle_a"},

@@ -2,8 +2,6 @@ id: multi-agent-engineering
 version: 1
 
 model_slots:
-  main:
-    description: Default model for the primary CLI session and orchestration.
   scout:
     description: Fast, low-cost model for quick repo discovery and narrow evidence gathering.
   reasoning:
@@ -372,16 +370,3 @@ instructions:
     - Start from current behavior and constraints, not the desired solution.
     - Prefer plans that preserve current contracts unless the task explicitly requires change.
     - End each plan with unresolved questions, if any.
-
-tool_configs:
-  codex:
-    model: "{{ models.main }}"
-    model_reasoning_effort: high
-    personality: pragmatic
-    plan_mode_reasoning_effort: xhigh
-
-  claude:
-    model: "{{ models.main }}"
-
-  opencode:
-    model: "{{ models.main }}"

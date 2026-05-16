@@ -8,10 +8,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// DecodeSpec parses a template YAML document with strict known fields.
+// DecodeSpec parses a template YAML document.
 func DecodeSpec(data []byte) (Spec, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
 	var spec Spec
 	if err := dec.Decode(&spec); err != nil {
 		return Spec{}, fmt.Errorf("parse yaml: %w", err)

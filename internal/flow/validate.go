@@ -20,21 +20,19 @@ func ValidateSpec(spec Spec) []diagnostic.Diagnostic {
 	if spec.Version != 1 {
 		diags = append(diags, diagnostic.Errorf("version %d is not supported; expected 1", spec.Version))
 	}
-	if len(spec.ModelSlots) == 0 {
-		diags = append(diags, diagnostic.Errorf("model_slots must contain at least one slot"))
-	}
 	if len(spec.PermissionProfiles) == 0 {
 		diags = append(diags, diagnostic.Errorf("permission_profiles must contain at least one profile"))
 	}
 	if len(spec.Agents) == 0 {
 		diags = append(diags, diagnostic.Errorf("agents must contain at least one agent"))
 	}
-	for name, slot := range spec.ModelSlots {
+	modelSlots := normalizeModelSlots(spec.ModelSlots)
+	for name, slot := range modelSlots {
 		if !idPattern.MatchString(name) {
 			diags = append(diags, diagnostic.Errorf("model slot %q has invalid id", name))
 		}
 		if slot.Fallback != "" {
-			if _, ok := spec.ModelSlots[slot.Fallback]; !ok {
+			if _, ok := modelSlots[slot.Fallback]; !ok {
 				diags = append(diags, diagnostic.Errorf("model slot %q fallback %q does not exist", name, slot.Fallback))
 			}
 		}
@@ -65,8 +63,12 @@ func ValidateSpec(spec Spec) []diagnostic.Diagnostic {
 		if agent.Prompt == "" {
 			diags = append(diags, diagnostic.Errorf("agent %q prompt is required", name))
 		}
-		if _, ok := spec.ModelSlots[agent.ModelSlot]; !ok {
-			diags = append(diags, diagnostic.Errorf("agent %q references missing model_slot %q", name, agent.ModelSlot))
+		modelSlot := agent.ModelSlot
+		if modelSlot == "" {
+			modelSlot = MainModelSlot
+		}
+		if _, ok := modelSlots[modelSlot]; !ok {
+			diags = append(diags, diagnostic.Errorf("agent %q references missing model_slot %q", name, modelSlot))
 		}
 		if _, ok := spec.PermissionProfiles[agent.PermissionProfile]; !ok {
 			diags = append(diags, diagnostic.Errorf("agent %q references missing permission_profile %q", name, agent.PermissionProfile))
@@ -81,11 +83,6 @@ func ValidateSpec(spec Spec) []diagnostic.Diagnostic {
 		}
 		if name == "." || name == ".." {
 			diags = append(diags, diagnostic.Errorf("instructions contains invalid filename %q", name))
-		}
-	}
-	for target := range spec.ToolConfigs {
-		if target == "" {
-			diags = append(diags, diagnostic.Errorf("tool_configs contains an empty target"))
 		}
 	}
 	return dedupe(diags)

@@ -8,7 +8,6 @@ type Spec struct {
 	PermissionProfiles map[string]SpecPermissionProfile `yaml:"permission_profiles"`
 	Agents             map[string]SpecAgent             `yaml:"agents"`
 	Instructions       map[string]string                `yaml:"instructions"`
-	ToolConfigs        map[string]map[string]any        `yaml:"tool_configs"`
 }
 
 // SpecModelSlot describes a logical model binding requested from the user.

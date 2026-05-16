@@ -262,6 +262,17 @@ func TestMergeCodexConfigReportsInvalidExistingTOML(t *testing.T) {
 	}
 }
 
+func TestCodexAgentFallbackModelUsesBuiltInMainSlot(t *testing.T) {
+	cfg := codexAgent(
+		flowmodel.Agent{ID: "reviewer", Description: "Reviews"},
+		flowmodel.PermissionProfile{Capabilities: map[string]string{"edit_files": "deny"}},
+		"",
+	)
+	if cfg.Model != "{{ models.main }}" {
+		t.Fatalf("model = %q, want built-in main placeholder", cfg.Model)
+	}
+}
+
 func renderPlan(t *testing.T, input target.RenderInput) install.Plan {
 	t.Helper()
 	artifacts, diags := (Renderer{}).Render(context.Background(), input)

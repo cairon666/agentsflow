@@ -16,6 +16,36 @@ func TestValidateSpecAcceptsMinimalFlow(t *testing.T) {
 	}
 }
 
+func TestValidateSpecAcceptsImplicitMainModelSlot(t *testing.T) {
+	spec := minimalSpec()
+	spec.ModelSlots = nil
+	agent := spec.Agents["reviewer"]
+	agent.ModelSlot = ""
+	spec.Agents["reviewer"] = agent
+
+	diags := ValidateSpec(spec)
+
+	if diagnostic.HasErrors(diags) {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+}
+
+func TestValidateSpecAcceptsFallbackToBuiltInMainModelSlot(t *testing.T) {
+	spec := minimalSpec()
+	spec.ModelSlots = map[string]SpecModelSlot{
+		"code": {Description: "Code model", Fallback: MainModelSlot},
+	}
+	agent := spec.Agents["reviewer"]
+	agent.ModelSlot = "code"
+	spec.Agents["reviewer"] = agent
+
+	diags := ValidateSpec(spec)
+
+	if diagnostic.HasErrors(diags) {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+}
+
 func TestValidateSpecRejectsUnknownCapability(t *testing.T) {
 	spec := minimalSpec()
 	spec.PermissionProfiles["read"].Capabilities["unknown"] = "allow"

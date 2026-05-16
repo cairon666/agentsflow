@@ -1,10 +1,6 @@
 id: lightweight-engineering
 version: 1
 
-model_slots:
-  main:
-    description: Default model for the primary CLI session.
-
 permission_profiles:
   read_only:
     description: Inspect project context without modifying files.
@@ -117,11 +113,3 @@ instructions:
     - Use `reviewer` before finalizing meaningful edits.
     - Keep changes small and preserve existing public contracts.
     - Run the smallest relevant validation command before finalizing.
-
-tool_configs:
-  codex:
-    model: "{{ models.main }}"
-  claude:
-    model: "{{ models.main }}"
-  opencode:
-    model: "{{ models.main }}"

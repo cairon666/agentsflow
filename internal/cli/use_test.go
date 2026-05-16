@@ -16,7 +16,7 @@ import (
 
 func TestUseCommandAcceptsFlags(t *testing.T) {
 	workDir := t.TempDir()
-	templatePath := writeUseTemplate(t, workDir, singleSlotTemplate)
+	templatePath := writeUseTemplate(t, workDir, implicitMainTemplate)
 	var stdout bytes.Buffer
 	application := appForUseTest(workDir, &stdout)
 
@@ -380,6 +380,26 @@ agents:
   reviewer:
     description: Reviews code
     model_slot: code
+    reasoning_effort: medium
+    permission_profile: read
+    prompt: Review code.
+instructions:
+  AGENTS.md: |
+    # Test
+`
+
+const implicitMainTemplate = `
+id: test-flow
+version: 1
+permission_profiles:
+  read:
+    description: Read profile
+    capabilities:
+      read_files: allow
+      edit_files: deny
+agents:
+  reviewer:
+    description: Reviews code
     reasoning_effort: medium
     permission_profile: read
     prompt: Review code.

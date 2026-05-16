@@ -1,10 +1,6 @@
 id: codex_project
 version: 1
 
-model_slots:
-  main:
-    description: Default model for the primary CLI session.
-
 permission_profiles:
   read_only:
     description: Inspect project context without modifying files.
@@ -36,7 +32,6 @@ permission_profiles:
 agents:
   scout:
     description: Fast read-only scout for locating the smallest relevant files.
-    model_slot: main
     reasoning_effort: low
     permission_profile: read_only
     prompt: |
@@ -44,7 +39,6 @@ agents:
 
   implementer:
     description: Makes a small focused code change and runs the nearest validation.
-    model_slot: main
     reasoning_effort: medium
     permission_profile: workspace_write
     prompt: |
@@ -52,7 +46,6 @@ agents:
 
   reviewer:
     description: Focused read-only review for regressions and missing checks.
-    model_slot: main
     reasoning_effort: high
     permission_profile: read_only
     prompt: |
@@ -63,11 +56,3 @@ instructions:
     # AGENTS.md
 
     ## Workflow
-
-tool_configs:
-  codex:
-    model: "{{ models.main }}"
-  claude:
-    model: "{{ models.main }}"
-  opencode:
-    model: "{{ models.main }}"
