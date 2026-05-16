@@ -1,7 +1,6 @@
 package render
 
 import (
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -16,21 +15,6 @@ func AgentIDs(flow ir.Flow) []string {
 	}
 	sort.Strings(ids)
 	return ids
-}
-
-// SlotNames returns sorted model slot names.
-func SlotNames(flow ir.Flow) []string {
-	names := make([]string, 0, len(flow.ModelSlots))
-	for name := range flow.ModelSlots {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-// Path joins path elements using the host filepath separator.
-func Path(parts ...string) string {
-	return filepath.Join(parts...)
 }
 
 // HyphenID returns an id suitable for tools that prefer hyphens.

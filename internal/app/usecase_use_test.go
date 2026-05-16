@@ -13,6 +13,7 @@ import (
 	"github.com/cairon666/agentsflow/internal/adapter/codex"
 	"github.com/cairon666/agentsflow/internal/binding"
 	"github.com/cairon666/agentsflow/internal/builder"
+	"github.com/cairon666/agentsflow/internal/console"
 	"github.com/cairon666/agentsflow/internal/install"
 	templatesource "github.com/cairon666/agentsflow/internal/source"
 )
@@ -38,6 +39,17 @@ func TestUseWritesCodexFilesWithFakePrompter(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(workDir, ".codex", "agents", "reviewer.toml")); err != nil {
 		t.Fatalf("expected codex agent file: %v", err)
 	}
+	output := stdout.String()
+	if !strings.HasPrefix(output, console.Banner()) {
+		t.Fatalf("stdout missing banner:\n%s", output)
+	}
+	assertOutputContains(t, output, []string{
+		"Template: test-flow",
+		"Target: codex",
+		"Model for main: gpt-test",
+		"Installation scope: project",
+		"Done.",
+	})
 }
 
 func TestUseResolvesRemoteSourceWithDefaultResolver(t *testing.T) {
@@ -73,6 +85,14 @@ func TestUseResolvesRemoteSourceWithDefaultResolver(t *testing.T) {
 	if !strings.Contains(string(agents), "# Beta") {
 		t.Fatalf("selected template was not used:\n%s", agents)
 	}
+	assertOutputContains(t, stdout.String(), []string{
+		"Source: https://example.test/repo.git",
+		"Template: test-flow",
+		"Target: codex",
+		"Model for main: gpt-test",
+		"Installation scope: project",
+		"Done.",
+	})
 }
 
 type fakePrompter struct{}
@@ -142,6 +162,15 @@ func assertTempRepoRemoved(t *testing.T, repoDest string) {
 	}
 	if _, err := os.Stat(root); !os.IsNotExist(err) {
 		t.Fatalf("temporary repository root still exists or could not be inspected: %v", err)
+	}
+}
+
+func assertOutputContains(t *testing.T, output string, values []string) {
+	t.Helper()
+	for _, want := range values {
+		if !strings.Contains(output, want) {
+			t.Fatalf("stdout missing %q:\n%s", want, output)
+		}
 	}
 }
 

@@ -49,6 +49,29 @@ func TestRenderProjectInstructionsInlineCLAUDE(t *testing.T) {
 	if content := actionContent(t, plan, claudePath); content != "# Test" {
 		t.Fatalf("CLAUDE.md = %q, want inline instructions", content)
 	}
+	settingsPath := filepath.Join(workDir, ".claude", "settings.json")
+	settings := actionContent(t, plan, settingsPath)
+	for _, want := range []string{
+		`"alwaysThinkingEnabled": true`,
+		`"model": "gpt"`,
+		`"multiAgent": true`,
+	} {
+		if !strings.Contains(settings, want) {
+			t.Fatalf("settings.json missing %q:\n%s", want, settings)
+		}
+	}
+	agent := actionContent(t, plan, filepath.Join(workDir, ".claude", "agents", "reviewer.md"))
+	for _, want := range []string{
+		"name: reviewer",
+		"description: Reviews",
+		"model: gpt",
+		"effort: medium",
+		"Review.",
+	} {
+		if !strings.Contains(agent, want) {
+			t.Fatalf("reviewer.md missing %q:\n%s", want, agent)
+		}
+	}
 	for _, action := range plan.Actions {
 		if action.Path == filepath.Join(workDir, "AGENTS.md") {
 			t.Fatalf("unexpected AGENTS.md action: %#v", action)

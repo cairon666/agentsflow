@@ -39,8 +39,13 @@ func TestRenderCreatesCodexAgent(t *testing.T) {
 		t.Fatalf("expected action for %s, got %#v", want, plan.Actions)
 	}
 
+	if agents := actionContent(t, plan, filepath.Join(workDir, "AGENTS.md")); agents != "# Test" {
+		t.Fatalf("AGENTS.md = %q, want project instructions", agents)
+	}
+
 	config := actionContent(t, plan, filepath.Join(workDir, ".codex", "config.toml"))
 	for _, want := range []string{
+		"model = 'gpt-test'",
 		"[features]",
 		"multi_agent = true",
 		"[agents]",
@@ -49,6 +54,23 @@ func TestRenderCreatesCodexAgent(t *testing.T) {
 	} {
 		if !strings.Contains(config, want) {
 			t.Fatalf("expected config.toml to contain %q, got:\n%s", want, config)
+		}
+	}
+
+	agent := actionContent(t, plan, filepath.Join(workDir, ".codex", "agents", "reviewer.toml"))
+	for _, want := range []string{
+		"name = 'reviewer'",
+		"description = 'Reviews'",
+		"model = 'gpt-test'",
+		"model_reasoning_effort = 'medium'",
+		"sandbox_mode = 'read-only'",
+		"approval_policy = 'never'",
+		"web_search = 'disabled'",
+		"developer_instructions",
+		"Review.",
+	} {
+		if !strings.Contains(agent, want) {
+			t.Fatalf("expected reviewer.toml to contain %q, got:\n%s", want, agent)
 		}
 	}
 }

@@ -31,6 +31,7 @@ func TestRunKeepsPreviousChoicesInOutputLog(t *testing.T) {
 	}
 	output := out.String()
 	for _, want := range []string{
+		"Template: test",
 		"Target: codex",
 		"Model for main: model-main",
 		"Model for code: model-code",
@@ -51,11 +52,24 @@ func TestSummaryIncludesConflictFiles(t *testing.T) {
 			{Path: ".claude/settings.json", Kind: install.ActionConflict},
 		},
 	})
-	if !strings.Contains(summary, "Conflicts: 1") {
-		t.Fatalf("summary missing conflict count:\n%s", summary)
+	want := "Create: 0\nUpdate: 1\nSkip: 0\nConflicts: 1\n\nConflict files:\n- .claude/settings.json\n"
+	if summary != want {
+		t.Fatalf("summary = %q, want %q", summary, want)
 	}
-	if !strings.Contains(summary, ".claude/settings.json") {
-		t.Fatalf("summary missing conflict path:\n%s", summary)
+}
+
+func TestSummaryOmitsConflictFilesWhenPlanHasNoConflicts(t *testing.T) {
+	summary := Summary(install.Plan{
+		Target: "codex",
+		Scope:  "project",
+		Actions: []install.Action{
+			{Path: "AGENTS.md", Kind: install.ActionCreate},
+			{Path: ".codex/config.toml", Kind: install.ActionSkip},
+		},
+	})
+	want := "Create: 1\nUpdate: 0\nSkip: 1\nConflicts: 0\n"
+	if summary != want {
+		t.Fatalf("summary = %q, want %q", summary, want)
 	}
 }
 

@@ -44,9 +44,13 @@ func TestUseCommandAcceptsFlags(t *testing.T) {
 	if !strings.Contains(string(config), "model = 'sonnet'") {
 		t.Fatalf("config did not use bound model:\n%s", config)
 	}
-	if !strings.Contains(stdout.String(), "Done.") {
-		t.Fatalf("stdout missing completion:\n%s", stdout.String())
-	}
+	assertOutputContains(t, stdout.String(), []string{
+		"Template: test-flow",
+		"Target: codex",
+		"Model for main: sonnet",
+		"Installation scope: project",
+		"Done.",
+	})
 }
 
 func TestUseCommandPromptsForMissingFlags(t *testing.T) {
@@ -75,15 +79,14 @@ func TestUseCommandPromptsForMissingFlags(t *testing.T) {
 		t.Fatalf("fallback confirm prompt was called %d times", fallback.confirmCalls)
 	}
 	output := stdout.String()
-	for _, want := range []string{
+	assertOutputContains(t, output, []string{
+		"Template: test-flow",
+		"Target: codex",
 		"Model for main: sonnet",
 		"Model for code: opus",
 		"Installation scope: project",
-	} {
-		if !strings.Contains(output, want) {
-			t.Fatalf("stdout missing %q:\n%s", want, output)
-		}
-	}
+		"Done.",
+	})
 }
 
 func TestUseCommandRejectsInvalidFlags(t *testing.T) {
@@ -261,6 +264,15 @@ func appForUseTest(workDir string, stdout *bytes.Buffer, adapters ...adapter.Ada
 		Stdout:   stdout,
 		WorkDir:  workDir,
 		HomeDir:  workDir,
+	}
+}
+
+func assertOutputContains(t *testing.T, output string, values []string) {
+	t.Helper()
+	for _, want := range values {
+		if !strings.Contains(output, want) {
+			t.Fatalf("stdout missing %q:\n%s", want, output)
+		}
 	}
 }
 
