@@ -1,10 +1,10 @@
 package binding
 
-import "github.com/cairon666/agentsflow/internal/ir"
+import flowmodel "github.com/cairon666/agentsflow/internal/flow"
 
-// ResolvedFlow combines IR with user choices collected by the builder.
+// ResolvedFlow combines a flow with user choices collected by the choice collector.
 type ResolvedFlow struct {
-	Flow    ir.Flow
+	Flow    flowmodel.Flow
 	Target  Target
 	Scope   Scope
 	Models  Models

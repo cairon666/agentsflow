@@ -2,28 +2,23 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/cairon666/agentsflow/internal/adapter"
-	"github.com/cairon666/agentsflow/internal/adapter/codex"
 	"github.com/cairon666/agentsflow/internal/app"
 	"github.com/cairon666/agentsflow/internal/binding"
-	"github.com/cairon666/agentsflow/internal/builder"
-	"github.com/cairon666/agentsflow/internal/diagnostic"
-	"github.com/cairon666/agentsflow/internal/install"
-	"github.com/cairon666/agentsflow/internal/ir"
+	"github.com/cairon666/agentsflow/internal/choices"
+	"github.com/cairon666/agentsflow/internal/composition"
 )
 
 func TestUseCommandAcceptsFlags(t *testing.T) {
 	workDir := t.TempDir()
 	templatePath := writeUseTemplate(t, workDir, singleSlotTemplate)
 	var stdout bytes.Buffer
-	application := appForUseTest(workDir, &stdout, codex.Adapter{})
+	application := appForUseTest(workDir, &stdout)
 
 	cmd := newUseCommandWithPrompter(application, failingPrompter{})
 	cmd.SetArgs([]string{
@@ -59,7 +54,7 @@ func TestUseCommandPromptsForMissingFlags(t *testing.T) {
 	var stdout bytes.Buffer
 	fallback := &recordingPrompter{models: map[string]string{"code": "opus"}}
 
-	cmd := newUseCommandWithPrompter(appForUseTest(workDir, &stdout, codex.Adapter{}), fallback)
+	cmd := newUseCommandWithPrompter(appForUseTest(workDir, &stdout), fallback)
 	cmd.SetArgs([]string{
 		templatePath,
 		"--target", "codex",
@@ -127,7 +122,7 @@ func TestUseCommandRejectsInvalidFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var stdout bytes.Buffer
-			cmd := newUseCommandWithPrompter(appForUseTest(workDir, &stdout, codex.Adapter{}), failingPrompter{})
+			cmd := newUseCommandWithPrompter(appForUseTest(workDir, &stdout), failingPrompter{})
 			cmd.SetArgs(tt.args)
 			err := cmd.Execute()
 			if err == nil {
@@ -192,11 +187,15 @@ func TestUseCommandInputErrorsIncludeUsage(t *testing.T) {
 func TestUseCommandYesDoesNotBypassConflicts(t *testing.T) {
 	workDir := t.TempDir()
 	templatePath := writeUseTemplate(t, workDir, singleSlotTemplate)
+	conflictPath := filepath.Join(workDir, "AGENTS.md")
+	if err := os.WriteFile(conflictPath, []byte("manual"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	var stdout bytes.Buffer
-	cmd := newUseCommandWithPrompter(appForUseTest(workDir, &stdout, conflictAdapter{}), failingPrompter{})
+	cmd := newUseCommandWithPrompter(appForUseTest(workDir, &stdout), failingPrompter{})
 	cmd.SetArgs([]string{
 		templatePath,
-		"--target", "conflict",
+		"--target", "codex",
 		"--bind", "main=sonnet",
 		"--scope", "project",
 		"--yes",
@@ -219,7 +218,7 @@ func TestUseCommandYesDoesNotBypassConflicts(t *testing.T) {
 
 func TestUseCommandHelpShowsFlags(t *testing.T) {
 	var out bytes.Buffer
-	cmd := newUseCommandWithPrompter(appForUseTest(t.TempDir(), &bytes.Buffer{}, codex.Adapter{}), failingPrompter{})
+	cmd := newUseCommandWithPrompter(appForUseTest(t.TempDir(), &bytes.Buffer{}), failingPrompter{})
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"--help"})
 	if err := cmd.Execute(); err != nil {
@@ -235,15 +234,15 @@ func TestUseCommandHelpShowsFlags(t *testing.T) {
 func TestUseCommandYesDoesNotBypassTemplateSelection(t *testing.T) {
 	fallback := &templateRecordingPrompter{}
 	options := useOptions{yes: true, fallback: fallback}
-	prompter, err := options.prompter(appForUseTest(t.TempDir(), &bytes.Buffer{}, codex.Adapter{}))
+	prompter, err := options.prompter(appForUseTest(t.TempDir(), &bytes.Buffer{}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	chooser, ok := prompter.(builder.TemplatePrompter)
+	chooser, ok := prompter.(choices.TemplatePrompter)
 	if !ok {
 		t.Fatal("prompter does not support template selection")
 	}
-	selected, err := chooser.ChooseTemplate([]builder.TemplateOption{
+	selected, err := chooser.ChooseTemplate([]choices.TemplateOption{
 		{Value: "/tmp/template.yaml", Label: "test"},
 	})
 	if err != nil {
@@ -257,14 +256,11 @@ func TestUseCommandYesDoesNotBypassTemplateSelection(t *testing.T) {
 	}
 }
 
-func appForUseTest(workDir string, stdout *bytes.Buffer, adapters ...adapter.Adapter) app.App {
-	return app.App{
-		Registry: adapter.NewRegistry(adapters...),
-		Writer:   install.NewWriter(),
-		Stdout:   stdout,
-		WorkDir:  workDir,
-		HomeDir:  workDir,
-	}
+func appForUseTest(workDir string, stdout *bytes.Buffer) app.App {
+	application := composition.NewApp(composition.Config{Stdout: stdout})
+	application.WorkDir = workDir
+	application.HomeDir = workDir
+	return application
 }
 
 func assertOutputContains(t *testing.T, output string, values []string) {
@@ -287,7 +283,7 @@ func writeUseTemplate(t *testing.T, dir, content string) string {
 
 type failingPrompter struct{}
 
-func (failingPrompter) ChooseTarget([]builder.TargetOption) (binding.Target, error) {
+func (failingPrompter) ChooseTarget([]choices.TargetOption) (binding.Target, error) {
 	return "", errors.New("unexpected target prompt")
 }
 
@@ -310,7 +306,7 @@ type recordingPrompter struct {
 	confirmCalls int
 }
 
-func (p *recordingPrompter) ChooseTarget([]builder.TargetOption) (binding.Target, error) {
+func (p *recordingPrompter) ChooseTarget([]choices.TargetOption) (binding.Target, error) {
 	p.targetCalls++
 	return binding.TargetCodex, nil
 }
@@ -337,27 +333,9 @@ type templateRecordingPrompter struct {
 	templateCalls int
 }
 
-func (p *templateRecordingPrompter) ChooseTemplate(options []builder.TemplateOption) (string, error) {
+func (p *templateRecordingPrompter) ChooseTemplate(options []choices.TemplateOption) (string, error) {
 	p.templateCalls++
 	return options[0].Value, nil
-}
-
-type conflictAdapter struct{}
-
-func (conflictAdapter) Target() binding.Target { return binding.Target("conflict") }
-
-func (conflictAdapter) Aliases() []string { return nil }
-
-func (conflictAdapter) Validate(context.Context, ir.Flow) []diagnostic.Diagnostic { return nil }
-
-func (conflictAdapter) Render(context.Context, adapter.RenderInput) (install.Plan, []diagnostic.Diagnostic) {
-	return install.Plan{
-		Target: "conflict",
-		Scope:  "project",
-		Actions: []install.Action{
-			{Path: "manual.md", Kind: install.ActionConflict},
-		},
-	}, nil
 }
 
 const singleSlotTemplate = `

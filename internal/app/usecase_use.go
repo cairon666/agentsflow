@@ -5,111 +5,90 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/cairon666/agentsflow/internal/adapter"
-	"github.com/cairon666/agentsflow/internal/builder"
-	"github.com/cairon666/agentsflow/internal/console"
 	"github.com/cairon666/agentsflow/internal/diagnostic"
-	"github.com/cairon666/agentsflow/internal/schema"
-	flowtemplate "github.com/cairon666/agentsflow/internal/template"
+	"github.com/cairon666/agentsflow/internal/install"
 )
 
 // Use loads a template, asks the user for choices, renders, and installs files.
-func (a App) Use(ctx context.Context, source string, prompter builder.Prompter) error {
-	history := console.NewHistoryWriter(a.Stdout)
-	_ = console.WrintBanner(a.Stdout)
+func (a App) Use(ctx context.Context, source string, choices ChoiceCollector) error {
+	a.Reporter.Banner()
 
-	path, cleanup, err := a.resolveTemplateSource(ctx, source, prompter)
+	resolved, err := a.TemplateSource.Resolve(ctx, source, choices, a.Reporter)
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	if resolved.Cleanup != nil {
+		defer resolved.Cleanup()
+	}
 
-	flow, err := flowtemplate.LoadFile(path)
+	loaded, err := a.FlowLoader.LoadFile(resolved.Path)
 	if err != nil {
 		return err
 	}
-	diags := schema.Validate(flow)
-	if len(diags) > 0 {
-		if err := a.print(diagnostic.FormatMany(diags)); err != nil {
-			return fmt.Errorf("write template diagnostics: %w", err)
-		}
+	if len(loaded.Diagnostics) > 0 {
+		a.Reporter.Message(diagnostic.FormatMany(loaded.Diagnostics))
 	}
-	if diagnostic.HasErrors(diags) {
+	if diagnostic.HasErrors(loaded.Diagnostics) {
 		return fmt.Errorf("template validation failed")
 	}
-	irFlow := schema.ToIR(flow)
-	choices, err := builder.Run(irFlow, targetOptions(a.Registry), prompter, a.Stdout)
+	collected, err := choices.Collect(ctx, loaded.Flow, targetOptions(a.TargetRegistry))
 	if err != nil {
 		return err
 	}
-	targetAdapter, err := a.Registry.Get(string(choices.Target))
+	targetRenderer, err := a.TargetRegistry.Get(string(collected.Target))
 	if err != nil {
 		return err
 	}
-	renderInput := adapter.RenderInput{
-		Flow:    irFlow,
-		Models:  choices.Models,
-		Scope:   choices.Scope,
+	renderInput := RenderInput{
+		Flow:    loaded.Flow,
+		Models:  collected.Models,
+		Scope:   collected.Scope,
 		WorkDir: a.WorkDir,
 		HomeDir: a.HomeDir,
 	}
-	targetDiags := targetAdapter.Validate(ctx, irFlow)
+	targetDiags := targetRenderer.Validate(ctx, renderInput)
 	if len(targetDiags) > 0 {
-		if err := a.print(diagnostic.FormatMany(targetDiags)); err != nil {
-			return fmt.Errorf("write target diagnostics: %w", err)
-		}
+		a.Reporter.Message(diagnostic.FormatMany(targetDiags))
 	}
 	if diagnostic.HasErrors(targetDiags) {
 		return fmt.Errorf("target validation failed")
 	}
-	plan, renderDiags := targetAdapter.Render(ctx, renderInput)
+	artifacts, renderDiags := targetRenderer.Render(ctx, renderInput)
 	if len(renderDiags) > 0 {
-		if err := a.print(diagnostic.FormatMany(renderDiags)); err != nil {
-			return fmt.Errorf("write render diagnostics: %w", err)
-		}
+		a.Reporter.Message(diagnostic.FormatMany(renderDiags))
 	}
 	if diagnostic.HasErrors(renderDiags) {
 		return fmt.Errorf("target rendering failed")
 	}
-	summary := builder.Summary(plan)
+	plan := a.InstallPlanner.Build(artifacts)
+	summary := install.FormatSummary(plan)
 	if plan.HasConflicts() {
-		if err := a.println(summary); err != nil {
-			return fmt.Errorf("write install summary: %w", err)
-		}
+		a.Reporter.MessageLine(summary)
 		return fmt.Errorf("install plan has conflicts; no files were written")
 	}
-	ok, err := prompter.Confirm(summary)
+	ok, err := choices.Confirm(ctx, summary)
 	if err != nil {
 		return fmt.Errorf("confirm install: %w", err)
 	}
 	if !ok {
-		if err := a.println("Cancelled. No files were written."); err != nil {
-			return fmt.Errorf("write cancellation message: %w", err)
-		}
+		a.Reporter.MessageLine("Cancelled. No files were written.")
 		return nil
 	}
-	if err := a.Writer.Apply(plan); err != nil {
+	if err := a.InstallWriter.Apply(plan); err != nil {
 		return err
 	}
 
-	history.WriteHistoryf("Done.\n").WriteHistorySpace()
+	a.Reporter.Historyf("Done.\n")
+	a.Reporter.HistorySpace()
 	return nil
 }
 
-func (a App) print(args ...any) error {
-	_, err := fmt.Fprint(a.Stdout, args...)
-	return err
-}
-
-func (a App) println(args ...any) error {
-	_, err := fmt.Fprintln(a.Stdout, args...)
-	return err
-}
-
-func targetOptions(registry adapter.Registry) []builder.TargetOption {
-	options := make([]builder.TargetOption, 0, len(registry.All()))
-	for _, item := range registry.All() {
-		options = append(options, builder.TargetOption{Value: item.Target(), Label: string(item.Target())})
+func targetOptions(registry TargetRegistry) []TargetOption {
+	renderers := registry.All()
+	options := make([]TargetOption, 0, len(renderers))
+	for _, item := range renderers {
+		target := item.Target()
+		options = append(options, TargetOption{Value: target, Label: string(target)})
 	}
 	sort.Slice(options, func(i, j int) bool {
 		return options[i].Value < options[j].Value

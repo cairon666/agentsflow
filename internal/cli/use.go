@@ -9,15 +9,16 @@ import (
 
 	"github.com/cairon666/agentsflow/internal/app"
 	"github.com/cairon666/agentsflow/internal/binding"
-	"github.com/cairon666/agentsflow/internal/builder"
-	"github.com/cairon666/agentsflow/internal/ir"
+	"github.com/cairon666/agentsflow/internal/choices"
+	flowmodel "github.com/cairon666/agentsflow/internal/flow"
+	"github.com/cairon666/agentsflow/internal/ui/terminal"
 )
 
 func newUseCommand(application app.App) *cobra.Command {
-	return newUseCommandWithPrompter(application, builder.HuhPrompter{})
+	return newUseCommandWithPrompter(application, terminal.HuhPrompter{})
 }
 
-func newUseCommandWithPrompter(application app.App, fallback builder.Prompter) *cobra.Command {
+func newUseCommandWithPrompter(application app.App, fallback choices.Prompter) *cobra.Command {
 	options := useOptions{fallback: fallback}
 	cmd := &cobra.Command{
 		Use:   "use <template|repo>",
@@ -28,7 +29,10 @@ func newUseCommandWithPrompter(application app.App, fallback builder.Prompter) *
 			if err != nil {
 				return err
 			}
-			return application.Use(cmd.Context(), args[0], prompter)
+			return application.Use(cmd.Context(), args[0], choiceCollector{
+				prompter: prompter,
+				reporter: application.Reporter,
+			})
 		},
 	}
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
@@ -61,10 +65,10 @@ type useOptions struct {
 	binds    []string
 	scope    string
 	yes      bool
-	fallback builder.Prompter
+	fallback choices.Prompter
 }
 
-func (o useOptions) prompter(application app.App) (builder.Prompter, error) {
+func (o useOptions) prompter(application app.App) (choices.Prompter, error) {
 	models, err := parseModelBindings(o.binds)
 	if err != nil {
 		return nil, err
@@ -75,7 +79,7 @@ func (o useOptions) prompter(application app.App) (builder.Prompter, error) {
 		fallback: o.fallback,
 	}
 	if strings.TrimSpace(o.target) != "" {
-		target, err := application.Registry.Resolve(o.target)
+		target, err := application.TargetRegistry.Resolve(o.target)
 		if err != nil {
 			return nil, err
 		}
@@ -128,10 +132,10 @@ type flagPrompter struct {
 	hasScope  bool
 	models    binding.Models
 	yes       bool
-	fallback  builder.Prompter
+	fallback  choices.Prompter
 }
 
-func (p flagPrompter) ValidateModelSlots(slots map[string]ir.ModelSlot) error {
+func (p flagPrompter) ValidateModelSlots(slots map[string]flowmodel.ModelSlot) error {
 	for slot := range p.models {
 		if _, ok := slots[slot]; !ok {
 			return fmt.Errorf("unknown model slot %q", slot)
@@ -140,15 +144,15 @@ func (p flagPrompter) ValidateModelSlots(slots map[string]ir.ModelSlot) error {
 	return nil
 }
 
-func (p flagPrompter) ChooseTarget(targets []builder.TargetOption) (binding.Target, error) {
+func (p flagPrompter) ChooseTarget(targets []choices.TargetOption) (binding.Target, error) {
 	if p.hasTarget {
 		return p.target, nil
 	}
 	return p.fallback.ChooseTarget(targets)
 }
 
-func (p flagPrompter) ChooseTemplate(templates []builder.TemplateOption) (string, error) {
-	chooser, ok := p.fallback.(builder.TemplatePrompter)
+func (p flagPrompter) ChooseTemplate(templates []choices.TemplateOption) (string, error) {
+	chooser, ok := p.fallback.(choices.TemplatePrompter)
 	if !ok {
 		return "", fmt.Errorf("template selection prompt unavailable")
 	}

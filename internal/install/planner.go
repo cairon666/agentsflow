@@ -6,33 +6,22 @@ import (
 	"os"
 )
 
-// BuildPlan resolves raw desired file contents into create/update/skip/conflict actions.
-func BuildPlan(target, scope string, desired map[string][]byte) Plan {
-	actions := make([]Action, 0, len(desired))
-	for path, content := range desired {
-		actions = append(actions, classifyAction(path, content, false))
+// BuildPlan resolves rendered artifacts into create/update/skip/conflict actions.
+func BuildPlan(artifacts ArtifactSet) Plan {
+	actions := make([]Action, 0, len(artifacts.Files))
+	for _, file := range artifacts.Files {
+		actions = append(actions, classifyAction(file.Path, file.Content, normalizedStrategy(file.Strategy)))
 	}
-	return Plan{Target: target, Scope: scope, Actions: actions}
+	return Plan{Target: artifacts.Target, Scope: artifacts.Scope, Actions: actions}
 }
 
-// BuildPlanWithManagedPaths resolves desired files and treats selected paths as
-// safe to update.
-func BuildPlanWithManagedPaths(target, scope string, desired map[string][]byte, managedPaths map[string]struct{}) Plan {
-	actions := make([]Action, 0, len(desired))
-	for path, content := range desired {
-		_, forcedManaged := managedPaths[path]
-		actions = append(actions, classifyAction(path, content, forcedManaged))
-	}
-	return Plan{Target: target, Scope: scope, Actions: actions}
-}
-
-func classifyAction(path string, content []byte, managed bool) Action {
-	action := Action{Path: path, Content: content, ManagedBy: managed}
+func classifyAction(path string, content []byte, strategy FileStrategy) Action {
+	action := Action{Path: path, Content: content, Strategy: strategy}
 	existing, err := os.ReadFile(path)
 	switch {
 	case err == nil && bytes.Equal(existing, content):
 		action.Kind = ActionSkip
-	case err == nil && managed:
+	case err == nil && strategy == StrategyMerge:
 		action.Kind = ActionUpdate
 	case err == nil:
 		action.Kind = ActionConflict
@@ -43,4 +32,11 @@ func classifyAction(path string, content []byte, managed bool) Action {
 		action.Content = []byte(fmt.Sprintf("could not inspect file: %v", err))
 	}
 	return action
+}
+
+func normalizedStrategy(strategy FileStrategy) FileStrategy {
+	if strategy == "" {
+		return StrategyCreateOnly
+	}
+	return strategy
 }

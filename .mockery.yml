@@ -1,0 +1,29 @@
+all: false
+dir: "{{.InterfaceDir}}"
+filename: mocks_test.go
+force-file-write: true
+formatter: goimports
+generate: true
+structname: "{{.Mock}}{{.InterfaceName}}"
+pkgname: "{{.SrcPackageName}}"
+template: testify
+packages:
+  github.com/cairon666/agentsflow/internal/app:
+    interfaces:
+      Reporter:
+      TemplateSource:
+      FlowLoader:
+      ChoiceCollector:
+      TargetRegistry:
+      TargetRenderer:
+      InstallPlanner:
+      InstallWriter:
+  github.com/cairon666/agentsflow/internal/choices:
+    interfaces:
+      HistoryReporter:
+  github.com/cairon666/agentsflow/internal/source:
+    interfaces:
+      Cloner:
+        configs:
+          - filename: mocks_test.go
+      Reporter:

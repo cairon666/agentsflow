@@ -1,7 +1,6 @@
 package source
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -10,13 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cairon666/agentsflow/internal/console"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestResolveReturnsLocalTemplatePath(t *testing.T) {
 	resolver := NewResolver()
+	reporter := NewMockReporter(t)
 
-	path, cleanup, err := resolver.Resolve(t.Context(), " template.yaml ", nil, &bytes.Buffer{})
+	path, cleanup, err := resolver.Resolve(t.Context(), " template.yaml ", nil, reporter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,12 +30,16 @@ func TestResolveRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 	repoDir := t.TempDir()
 	writeRemoteTemplate(t, repoDir, "alpha", "template")
 
-	cloner := &fakeGitCloner{sourceDir: repoDir}
-	var stdout bytes.Buffer
+	var cloneDest string
+	cloner := NewMockCloner(t)
+	expectCloneCopies(cloner, "https://example.test/repo.git", repoDir, &cloneDest)
+	reporter := NewMockReporter(t)
+	expectLoadingRuns(reporter)
+	expectSourceHistory(reporter, "https://example.test/repo.git")
 	chooser := &recordingTemplateChooser{selectedLabel: "alpha"}
 	resolver := DefaultResolver{Cloner: cloner}
 
-	path, cleanup, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", chooser, &stdout)
+	path, cleanup, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", chooser, reporter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +48,7 @@ func TestResolveRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 	}
 	defer cleanup()
 
-	assertSelectedTemplate(t, path, cloner.dest, "alpha")
+	assertSelectedTemplate(t, path, cloneDest, "alpha")
 	if chooser.templateCalls != 1 {
 		t.Fatalf("template prompt calls = %d, want 1", chooser.templateCalls)
 	}
@@ -52,7 +56,7 @@ func TestResolveRemoteRepositoryPromptsForSingleTemplate(t *testing.T) {
 		t.Fatalf("template labels = %v, want [alpha]", chooser.labels)
 	}
 	cleanup()
-	assertTempRepoRemoved(t, cloner.dest)
+	assertTempRepoRemoved(t, cloneDest)
 }
 
 func TestResolveRemoteRepositorySortsAndUsesSelectedTemplate(t *testing.T) {
@@ -61,10 +65,15 @@ func TestResolveRemoteRepositorySortsAndUsesSelectedTemplate(t *testing.T) {
 	writeRemoteTemplate(t, repoDir, "alpha", "alpha")
 
 	chooser := &recordingTemplateChooser{selectedLabel: "beta"}
-	cloner := &fakeGitCloner{sourceDir: repoDir}
+	var cloneDest string
+	cloner := NewMockCloner(t)
+	expectCloneCopies(cloner, "https://example.test/repo.git", repoDir, &cloneDest)
+	reporter := NewMockReporter(t)
+	expectLoadingRuns(reporter)
+	expectSourceHistory(reporter, "https://example.test/repo.git")
 	resolver := DefaultResolver{Cloner: cloner}
 
-	path, cleanup, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", chooser, &bytes.Buffer{})
+	path, cleanup, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", chooser, reporter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,23 +82,28 @@ func TestResolveRemoteRepositorySortsAndUsesSelectedTemplate(t *testing.T) {
 	if !reflect.DeepEqual(chooser.labels, []string{"alpha", "beta"}) {
 		t.Fatalf("template labels = %v, want [alpha beta]", chooser.labels)
 	}
-	assertSelectedTemplate(t, path, cloner.dest, "beta")
+	assertSelectedTemplate(t, path, cloneDest, "beta")
 	cleanup()
-	assertTempRepoRemoved(t, cloner.dest)
+	assertTempRepoRemoved(t, cloneDest)
 }
 
 func TestResolveRemoteRepositoryRequiresTemplates(t *testing.T) {
 	repoDir := t.TempDir()
 
-	cloner := &fakeGitCloner{sourceDir: repoDir}
+	var cloneDest string
+	cloner := NewMockCloner(t)
+	expectCloneCopies(cloner, "https://example.test/repo.git", repoDir, &cloneDest)
 	chooser := &recordingTemplateChooser{selectedLabel: "alpha"}
+	reporter := NewMockReporter(t)
+	expectLoadingRuns(reporter)
+	expectSourceHistory(reporter, "https://example.test/repo.git")
 	resolver := DefaultResolver{Cloner: cloner}
 
-	_, _, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", chooser, &bytes.Buffer{})
+	_, _, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", chooser, reporter)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	assertTempRepoRemoved(t, cloner.dest)
+	assertTempRepoRemoved(t, cloneDest)
 	if !strings.Contains(err.Error(), "no templates found") {
 		t.Fatalf("error = %q, want no templates found", err)
 	}
@@ -98,78 +112,121 @@ func TestResolveRemoteRepositoryRequiresTemplates(t *testing.T) {
 	}
 }
 
-func TestResolveRemoteRepositoryRemovesTempDirWhenCloneFails(t *testing.T) {
-	cloneErr := errors.New("network down")
-	cloner := &failingGitCloner{err: cloneErr}
+func TestResolveRemoteRepositoryRemovesTempDirWhenHistoryPanics(t *testing.T) {
+	writeErr := errors.New("write failed")
+	var cloneDest string
+	cloner := NewMockCloner(t)
+	expectCloneCopies(cloner, "https://example.test/repo.git", t.TempDir(), &cloneDest)
+	reporter := NewMockReporter(t)
+	expectLoadingRuns(reporter)
+	reporter.On("HistorySpace").Run(func(mock.Arguments) {
+		panic(writeErr)
+	}).Once()
 	resolver := DefaultResolver{Cloner: cloner}
 
-	_, _, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", &recordingTemplateChooser{}, &bytes.Buffer{})
+	recovered := func() (recovered any) {
+		defer func() {
+			recovered = recover()
+		}()
+
+		_, _, _ = resolver.Resolve(t.Context(), "https://example.test/repo.git", &recordingTemplateChooser{}, reporter)
+		return nil
+	}()
+	if recovered == nil {
+		t.Fatal("expected panic")
+	}
+	err, ok := recovered.(error)
+	if !ok {
+		t.Fatalf("panic = %T %v, want error", recovered, recovered)
+	}
+	if !errors.Is(err, writeErr) {
+		t.Fatalf("panic = %v, want wrapped %v", err, writeErr)
+	}
+	assertTempRepoRemoved(t, cloneDest)
+}
+
+func TestResolveRemoteRepositoryRemovesTempDirWhenCloneFails(t *testing.T) {
+	cloneErr := errors.New("network down")
+	var cloneDest string
+	cloner := NewMockCloner(t)
+	expectClone(cloner, "https://example.test/repo.git", &cloneDest, func(context.Context, string) error {
+		return cloneErr
+	})
+	reporter := NewMockReporter(t)
+	expectLoadingRuns(reporter)
+	resolver := DefaultResolver{Cloner: cloner}
+
+	_, _, err := resolver.Resolve(t.Context(), "https://example.test/repo.git", &recordingTemplateChooser{}, reporter)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 	if !errors.Is(err, cloneErr) {
 		t.Fatalf("error = %v, want wrapped %v", err, cloneErr)
 	}
-	assertTempRepoRemoved(t, cloner.dest)
+	assertTempRepoRemoved(t, cloneDest)
 }
 
 func TestResolveRemoteRepositoryCancelsClone(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	cloner := &cancelingGitCloner{cancel: cancel}
+	var cloneDest string
+	cloner := NewMockCloner(t)
+	expectClone(cloner, "https://example.test/repo.git", &cloneDest, func(ctx context.Context, _ string) error {
+		cancel()
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	reporter := NewMockReporter(t)
+	expectLoadingRuns(reporter)
 	resolver := DefaultResolver{Cloner: cloner}
 
-	_, _, err := resolver.Resolve(ctx, "https://example.test/repo.git", &recordingTemplateChooser{}, &bytes.Buffer{})
+	_, _, err := resolver.Resolve(ctx, "https://example.test/repo.git", &recordingTemplateChooser{}, reporter)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want context.Canceled", err)
 	}
-	assertTempRepoRemoved(t, cloner.dest)
+	assertTempRepoRemoved(t, cloneDest)
 }
 
 func TestResolveRemoteRepositoryWaitsForCloneAfterCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	cloner := newBlockingCancelGitCloner()
+	var cloneDest string
+	started := make(chan struct{})
+	cancelled := make(chan struct{})
+	released := make(chan struct{})
+	cloner := NewMockCloner(t)
+	expectClone(cloner, "https://example.test/repo.git", &cloneDest, func(ctx context.Context, _ string) error {
+		close(started)
+		<-ctx.Done()
+		close(cancelled)
+		<-released
+		return ctx.Err()
+	})
+	reporter := NewMockReporter(t)
+	expectLoadingRuns(reporter)
 	resolver := DefaultResolver{Cloner: cloner}
 	errCh := make(chan error, 1)
 
 	go func() {
-		_, _, err := resolver.Resolve(ctx, "https://example.test/repo.git", &recordingTemplateChooser{}, &bytes.Buffer{})
+		_, _, err := resolver.Resolve(ctx, "https://example.test/repo.git", &recordingTemplateChooser{}, reporter)
 		errCh <- err
 	}()
 
-	<-cloner.started
+	<-started
 	cancel()
-	<-cloner.cancelled
+	<-cancelled
 	select {
 	case err := <-errCh:
 		t.Fatalf("Resolve returned before clone completed: %v", err)
 	default:
 	}
 
-	cloner.release()
+	close(released)
 	err := <-errCh
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want context.Canceled", err)
 	}
-	assertTempRepoRemoved(t, cloner.dest)
-}
-
-func TestRunWithLoadingUsesAccessibleModeForNonTerminalOutput(t *testing.T) {
-	var stdout bytes.Buffer
-	err := console.RunWithLoading(t.Context(), &stdout, "Loading repository...", func(context.Context) error {
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	output := stdout.String()
-	if !strings.Contains(output, "Loading repository") {
-		t.Fatalf("stdout missing loading title:\n%s", output)
-	}
-	if strings.Contains(output, "[?2026") || strings.Contains(output, "[?2027") || strings.Contains(output, "]11;") {
-		t.Fatalf("stdout included terminal query sequences:\n%q", output)
-	}
+	assertTempRepoRemoved(t, cloneDest)
 }
 
 func assertSelectedTemplate(t *testing.T, path, repoDest, name string) {
@@ -223,66 +280,32 @@ func (c *recordingTemplateChooser) ChooseTemplate(options []TemplateOption) (str
 	return options[0].Value, nil
 }
 
-type fakeGitCloner struct {
-	sourceDir string
-	dest      string
+func expectLoadingRuns(reporter *MockReporter) {
+	reporter.On("RunLoading", mock.Anything, "Loading repository...", mock.Anything).
+		Return(func(ctx context.Context, _ string, action func(context.Context) error) error {
+			return action(ctx)
+		}).
+		Once()
 }
 
-func (c *fakeGitCloner) Clone(_ context.Context, _, dest string) error {
-	c.dest = dest
-	return copyTree(c.sourceDir, dest)
+func expectSourceHistory(reporter *MockReporter, source string) {
+	reporter.On("HistorySpace").Once()
+	reporter.On("Historyf", "Source: %s\n", []any{source}).Once()
 }
 
-type failingGitCloner struct {
-	dest string
-	err  error
+func expectCloneCopies(cloner *MockCloner, source, sourceDir string, cloneDest *string) {
+	expectClone(cloner, source, cloneDest, func(_ context.Context, dest string) error {
+		return copyTree(sourceDir, dest)
+	})
 }
 
-func (c *failingGitCloner) Clone(_ context.Context, _, dest string) error {
-	c.dest = dest
-	return c.err
-}
-
-type cancelingGitCloner struct {
-	dest   string
-	cancel context.CancelFunc
-}
-
-func (c *cancelingGitCloner) Clone(ctx context.Context, _, dest string) error {
-	c.dest = dest
-	if c.cancel != nil {
-		c.cancel()
-	}
-	<-ctx.Done()
-	return ctx.Err()
-}
-
-type blockingCancelGitCloner struct {
-	dest      string
-	started   chan struct{}
-	cancelled chan struct{}
-	released  chan struct{}
-}
-
-func newBlockingCancelGitCloner() *blockingCancelGitCloner {
-	return &blockingCancelGitCloner{
-		started:   make(chan struct{}),
-		cancelled: make(chan struct{}),
-		released:  make(chan struct{}),
-	}
-}
-
-func (c *blockingCancelGitCloner) Clone(ctx context.Context, _, dest string) error {
-	c.dest = dest
-	close(c.started)
-	<-ctx.Done()
-	close(c.cancelled)
-	<-c.released
-	return ctx.Err()
-}
-
-func (c *blockingCancelGitCloner) release() {
-	close(c.released)
+func expectClone(cloner *MockCloner, source string, cloneDest *string, clone func(context.Context, string) error) {
+	cloner.On("Clone", mock.Anything, source, mock.Anything).
+		Return(func(ctx context.Context, _ string, dest string) error {
+			*cloneDest = dest
+			return clone(ctx, dest)
+		}).
+		Once()
 }
 
 func copyTree(source, dest string) error {

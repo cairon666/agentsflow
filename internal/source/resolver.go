@@ -3,14 +3,11 @@ package source
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/cairon666/agentsflow/internal/console"
 )
 
 const templateRepoDir = ".agentsflow"
@@ -31,22 +28,29 @@ type Cloner interface {
 	Clone(context.Context, string, string) error
 }
 
+// Reporter records source-resolution history and loading feedback.
+type Reporter interface {
+	Historyf(format string, args ...any)
+	HistorySpace()
+	RunLoading(context.Context, string, func(context.Context) error) error
+}
+
 // LoadingRunner runs a source-loading action with optional progress output.
 type LoadingRunner interface {
-	Run(context.Context, io.Writer, string, func(context.Context) error) error
+	Run(context.Context, string, func(context.Context) error) error
 }
 
 // LoadingRunnerFunc adapts a function to LoadingRunner.
-type LoadingRunnerFunc func(context.Context, io.Writer, string, func(context.Context) error) error
+type LoadingRunnerFunc func(context.Context, string, func(context.Context) error) error
 
 // Run runs f.
-func (f LoadingRunnerFunc) Run(ctx context.Context, out io.Writer, title string, action func(context.Context) error) error {
-	return f(ctx, out, title, action)
+func (f LoadingRunnerFunc) Run(ctx context.Context, title string, action func(context.Context) error) error {
+	return f(ctx, title, action)
 }
 
 // Resolver resolves a template source to a local template file path.
 type Resolver interface {
-	Resolve(context.Context, string, TemplateChooser, io.Writer) (string, func(), error)
+	Resolve(context.Context, string, TemplateChooser, Reporter) (string, func(), error)
 }
 
 // DefaultResolver resolves local paths and git repository sources.
@@ -61,15 +65,15 @@ func NewResolver() DefaultResolver {
 }
 
 // Resolve resolves a local template path or a git repository source.
-func (r DefaultResolver) Resolve(ctx context.Context, source string, chooser TemplateChooser, out io.Writer) (string, func(), error) {
+func (r DefaultResolver) Resolve(ctx context.Context, source string, chooser TemplateChooser, reporter Reporter) (string, func(), error) {
 	source = strings.TrimSpace(source)
 	if !IsGitSource(source) {
 		return source, func() {}, nil
 	}
-	return r.resolveGitTemplate(ctx, source, chooser, out)
+	return r.resolveGitTemplate(ctx, source, chooser, reporter)
 }
 
-func (r DefaultResolver) resolveGitTemplate(ctx context.Context, source string, chooser TemplateChooser, out io.Writer) (string, func(), error) {
+func (r DefaultResolver) resolveGitTemplate(ctx context.Context, source string, chooser TemplateChooser, reporter Reporter) (string, func(), error) {
 	if chooser == nil {
 		return "", nil, fmt.Errorf("template selection prompt unavailable")
 	}
@@ -81,6 +85,12 @@ func (r DefaultResolver) resolveGitTemplate(ctx context.Context, source string, 
 	cleanup := func() {
 		_ = os.RemoveAll(root)
 	}
+	keepRepo := false
+	defer func() {
+		if !keepRepo {
+			cleanup()
+		}
+	}()
 
 	repoDir := filepath.Join(root, "repo")
 	cloner := r.Cloner
@@ -88,32 +98,31 @@ func (r DefaultResolver) resolveGitTemplate(ctx context.Context, source string, 
 		cloner = GitCLICloner{}
 	}
 	loading := r.Loading
-	if loading == nil {
-		loading = LoadingRunnerFunc(console.RunWithLoading)
+	runLoading := reporter.RunLoading
+	if loading != nil {
+		runLoading = loading.Run
 	}
-	if err := loading.Run(ctx, out, "Loading repository...", func(ctx context.Context) error {
+	if err := runLoading(ctx, "Loading repository...", func(ctx context.Context) error {
 		return cloner.Clone(ctx, source, repoDir)
 	}); err != nil {
-		cleanup()
 		return "", nil, err
 	}
 
-	console.NewHistoryWriter(out).WriteHistorySpace().WriteHistoryf("Source: %s\n", source)
+	reporter.HistorySpace()
+	reporter.Historyf("Source: %s\n", source)
 
 	options, err := discoverTemplateOptions(repoDir)
 	if err != nil {
-		cleanup()
 		return "", nil, err
 	}
 	selected, err := chooser.ChooseTemplate(options)
 	if err != nil {
-		cleanup()
 		return "", nil, fmt.Errorf("choose template: %w", err)
 	}
 	if selected == "" {
-		cleanup()
 		return "", nil, fmt.Errorf("choose template: selected template is empty")
 	}
+	keepRepo = true
 	return selected, cleanup, nil
 }
 

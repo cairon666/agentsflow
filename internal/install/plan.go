@@ -6,23 +6,49 @@ type ActionKind string
 const (
 	// ActionCreate creates a new file.
 	ActionCreate ActionKind = "create"
-	// ActionUpdate updates a managed file.
+	// ActionUpdate updates a file allowed by its strategy.
 	ActionUpdate ActionKind = "update"
 	// ActionSkip leaves an identical file untouched.
 	ActionSkip ActionKind = "skip"
-	// ActionConflict reports an unmanaged existing file.
+	// ActionConflict reports an unsafe existing file.
 	ActionConflict ActionKind = "conflict"
+)
+
+// FileStrategy describes how a desired file may interact with an existing file.
+type FileStrategy string
+
+const (
+	// StrategyOwned is reserved for future manifest-backed owned files.
+	StrategyOwned FileStrategy = "owned"
+	// StrategyMerge updates files after target-specific merge logic preserved user keys.
+	StrategyMerge FileStrategy = "merge"
+	// StrategyCreateOnly creates missing files and conflicts on differing existing files.
+	StrategyCreateOnly FileStrategy = "create-only"
 )
 
 // Action is one planned filesystem operation.
 type Action struct {
-	Path      string
-	Kind      ActionKind
-	Content   []byte
-	ManagedBy bool
+	Path     string
+	Kind     ActionKind
+	Content  []byte
+	Strategy FileStrategy
 }
 
-// Plan is the set of files a target adapter wants to install.
+// DesiredFile is a target-rendered file before install planning.
+type DesiredFile struct {
+	Path     string
+	Content  []byte
+	Strategy FileStrategy
+}
+
+// ArtifactSet is the set of target-rendered files to install.
+type ArtifactSet struct {
+	Target string
+	Scope  string
+	Files  []DesiredFile
+}
+
+// Plan is the set of files a target renderer wants to install.
 type Plan struct {
 	Target  string
 	Scope   string
