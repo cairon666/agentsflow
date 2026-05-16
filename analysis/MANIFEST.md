@@ -157,9 +157,7 @@ JSON подходит лучше, чем YAML, потому что это маш
         "model",
         "model_reasoning_effort",
         "plan_mode_reasoning_effort",
-        "features.multi_agent",
-        "agents.max_threads",
-        "agents.max_depth"
+        "features.multi_agent"
       ],
       "template_id": "default",
       "template_version": 1,

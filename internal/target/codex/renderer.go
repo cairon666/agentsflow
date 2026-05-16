@@ -91,11 +91,6 @@ func MergeCodexConfig(existing []byte, model string) ([]byte, error) {
 	features["multi_agent"] = true
 	config["features"] = features
 
-	agents := mapValue(config["agents"])
-	agents["max_threads"] = 7
-	agents["max_depth"] = 2
-	config["agents"] = agents
-
 	return render.TOML(config)
 }
 

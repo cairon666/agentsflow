@@ -45,12 +45,18 @@ func TestRenderCreatesCodexAgent(t *testing.T) {
 		"model = 'gpt-test'",
 		"[features]",
 		"multi_agent = true",
-		"[agents]",
-		"max_threads = 7",
-		"max_depth = 2",
 	} {
 		if !strings.Contains(config, want) {
 			t.Fatalf("expected config.toml to contain %q, got:\n%s", want, config)
+		}
+	}
+	for _, unwanted := range []string{
+		"[agents]",
+		"max_threads",
+		"max_depth",
+	} {
+		if strings.Contains(config, unwanted) {
+			t.Fatalf("expected config.toml not to contain %q, got:\n%s", unwanted, config)
 		}
 	}
 
@@ -199,11 +205,17 @@ existing_limit = 3
 		"existing_feature = true",
 		"multi_agent = true",
 		"existing_limit = 3",
-		"max_threads = 7",
-		"max_depth = 2",
 	} {
 		if !strings.Contains(config, want) {
 			t.Fatalf("expected config.toml to contain %q, got:\n%s", want, config)
+		}
+	}
+	for _, unwanted := range []string{
+		"max_threads",
+		"max_depth",
+	} {
+		if strings.Contains(config, unwanted) {
+			t.Fatalf("expected config.toml not to contain %q, got:\n%s", unwanted, config)
 		}
 	}
 }
@@ -229,11 +241,17 @@ existing_limit = 3
 		"existing_feature = true",
 		"multi_agent = true",
 		"existing_limit = 3",
-		"max_threads = 7",
-		"max_depth = 2",
 	} {
 		if !strings.Contains(config, want) {
 			t.Fatalf("expected merged config to contain %q, got:\n%s", want, config)
+		}
+	}
+	for _, unwanted := range []string{
+		"max_threads",
+		"max_depth",
+	} {
+		if strings.Contains(config, unwanted) {
+			t.Fatalf("expected merged config not to contain %q, got:\n%s", unwanted, config)
 		}
 	}
 }
