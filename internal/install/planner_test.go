@@ -65,6 +65,59 @@ func TestBuildPlanMergeStrategyUpdatesExistingFile(t *testing.T) {
 	}
 }
 
+func TestBuildPlanOverwriteStrategyOverwritesExistingDifferentFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "AGENTS.md")
+	if err := os.WriteFile(path, []byte("manual"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan := BuildPlan(ArtifactSet{
+		Target: "codex",
+		Scope:  "project",
+		Files: []DesiredFile{
+			{Path: path, Content: []byte("generated"), Strategy: StrategyOverwrite},
+		},
+	})
+	if len(plan.Actions) != 1 {
+		t.Fatalf("actions = %d", len(plan.Actions))
+	}
+	if plan.Actions[0].Kind != ActionOverwrite {
+		t.Fatalf("kind = %q, want overwrite", plan.Actions[0].Kind)
+	}
+	if plan.Actions[0].Strategy != StrategyOverwrite {
+		t.Fatalf("strategy = %q, want overwrite", plan.Actions[0].Strategy)
+	}
+}
+
+func TestBuildPlanCleanDirPrecedesAgentWrites(t *testing.T) {
+	dir := t.TempDir()
+	agentsDir := filepath.Join(dir, ".codex", "agents")
+	agentPath := filepath.Join(agentsDir, "reviewer.toml")
+	if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(agentPath, []byte("same"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan := BuildPlan(ArtifactSet{
+		Target:    "codex",
+		Scope:     "project",
+		CleanDirs: []string{agentsDir},
+		Files: []DesiredFile{
+			{Path: agentPath, Content: []byte("same"), Strategy: StrategyOverwrite},
+		},
+	})
+	if len(plan.Actions) != 2 {
+		t.Fatalf("actions = %d", len(plan.Actions))
+	}
+	if plan.Actions[0].Kind != ActionCleanDir || plan.Actions[0].Path != agentsDir {
+		t.Fatalf("first action = %#v, want clean dir for %s", plan.Actions[0], agentsDir)
+	}
+	if plan.Actions[1].Kind != ActionCreate {
+		t.Fatalf("agent action kind = %q, want create after cleanup", plan.Actions[1].Kind)
+	}
+}
+
 func TestBuildPlanOwnedStrategyConflictsWithoutManifest(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "agent.md")

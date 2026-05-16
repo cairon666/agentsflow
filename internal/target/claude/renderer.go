@@ -48,7 +48,7 @@ func (r Renderer) Render(_ context.Context, input target.RenderInput) (install.A
 		files = append(files, install.DesiredFile{Path: path, Content: content, Strategy: strategy})
 	}
 	if agents, ok := input.Flow.Instructions["AGENTS.md"]; ok {
-		addDesired(filepath.Join(root, "CLAUDE.md"), []byte(agents), install.StrategyCreateOnly)
+		addDesired(filepath.Join(root, "CLAUDE.md"), []byte(agents), install.StrategyOverwrite)
 	}
 	settingsPath := filepath.Join(configDir, "settings.json")
 	existingSettings, err := filesystem.ReadOptionalFile(r.Reader, settingsPath)
@@ -65,9 +65,14 @@ func (r Renderer) Render(_ context.Context, input target.RenderInput) (install.A
 		profile := input.Flow.PermissionProfiles[agent.PermissionProfile]
 		name := render.HyphenID(id)
 		body := render.Frontmatter(claudeFrontmatter(name, agent, profile, input.Flow.ResolveAgentModel(input.Models, agent))) + agent.Prompt
-		addDesired(filepath.Join(configDir, "agents", name+".md"), []byte(body), install.StrategyOwned)
+		addDesired(filepath.Join(configDir, "agents", name+".md"), []byte(body), install.StrategyOverwrite)
 	}
-	return install.ArtifactSet{Target: string(r.Metadata().Name), Scope: string(input.Scope), Files: files}, nil
+	return install.ArtifactSet{
+		Target:    string(r.Metadata().Name),
+		Scope:     string(input.Scope),
+		CleanDirs: []string{filepath.Join(configDir, "agents")},
+		Files:     files,
+	}, nil
 }
 
 func claudeRoot(scope binding.Scope, workDir, homeDir string) string {

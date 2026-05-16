@@ -35,6 +35,7 @@ func TestRenderCreatesCodexAgent(t *testing.T) {
 	if !found {
 		t.Fatalf("expected action for %s, got %#v", want, plan.Actions)
 	}
+	assertActionKind(t, plan, filepath.Join(workDir, ".codex", "agents"), install.ActionCleanDir)
 
 	if agents := actionContent(t, plan, filepath.Join(workDir, "AGENTS.md")); agents != "# Test" {
 		t.Fatalf("AGENTS.md = %q, want project instructions", agents)
@@ -291,6 +292,19 @@ func actionContent(t *testing.T, plan install.Plan, path string) string {
 	}
 	t.Fatalf("expected action for %s, got %#v", path, plan.Actions)
 	return ""
+}
+
+func assertActionKind(t *testing.T, plan install.Plan, path string, kind install.ActionKind) {
+	t.Helper()
+	for _, action := range plan.Actions {
+		if action.Path == path {
+			if action.Kind != kind {
+				t.Fatalf("%s kind = %q, want %q", path, action.Kind, kind)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected action for %s, got %#v", path, plan.Actions)
 }
 
 func testFlow() flowmodel.Flow {

@@ -40,6 +40,7 @@ func TestRenderProjectInstructionsInlineCLAUDE(t *testing.T) {
 		HomeDir: t.TempDir(),
 	})
 	claudePath := filepath.Join(workDir, "CLAUDE.md")
+	assertActionKind(t, plan, filepath.Join(workDir, ".claude", "agents"), install.ActionCleanDir)
 	if content := actionContent(t, plan, claudePath); content != "# Test" {
 		t.Fatalf("CLAUDE.md = %q, want inline instructions", content)
 	}
@@ -197,6 +198,19 @@ func actionContent(t *testing.T, plan install.Plan, path string) string {
 	}
 	t.Fatalf("expected action for %s, got %#v", path, plan.Actions)
 	return ""
+}
+
+func assertActionKind(t *testing.T, plan install.Plan, path string, kind install.ActionKind) {
+	t.Helper()
+	for _, action := range plan.Actions {
+		if action.Path == path {
+			if action.Kind != kind {
+				t.Fatalf("%s kind = %q, want %q", path, action.Kind, kind)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected action for %s, got %#v", path, plan.Actions)
 }
 
 func testFlow() flowmodel.Flow {

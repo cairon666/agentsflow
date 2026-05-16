@@ -7,11 +7,13 @@ func TestFormatSummaryIncludesConflictFiles(t *testing.T) {
 		Target: "claude",
 		Scope:  "project",
 		Actions: []Action{
+			{Path: ".claude/agents", Kind: ActionCleanDir},
 			{Path: "managed.md", Kind: ActionUpdate},
+			{Path: "CLAUDE.md", Kind: ActionOverwrite},
 			{Path: ".claude/settings.json", Kind: ActionConflict},
 		},
 	})
-	want := "Create: 0\nUpdate: 1\nSkip: 0\nConflicts: 1\n\nConflict files:\n- .claude/settings.json\n"
+	want := "Clean: 1\nCreate: 0\nUpdate: 1\nOverwrite: 1\nSkip: 0\nConflicts: 1\n\nOverwrite files:\n- CLAUDE.md\n\nConflict files:\n- .claude/settings.json\n"
 	if summary != want {
 		t.Fatalf("summary = %q, want %q", summary, want)
 	}
@@ -26,7 +28,7 @@ func TestFormatSummaryOmitsConflictFilesWhenPlanHasNoConflicts(t *testing.T) {
 			{Path: ".codex/config.toml", Kind: ActionSkip},
 		},
 	})
-	want := "Create: 1\nUpdate: 0\nSkip: 1\nConflicts: 0\n"
+	want := "Clean: 0\nCreate: 1\nUpdate: 0\nOverwrite: 0\nSkip: 1\nConflicts: 0\n"
 	if summary != want {
 		t.Fatalf("summary = %q, want %q", summary, want)
 	}

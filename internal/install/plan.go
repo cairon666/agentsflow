@@ -6,8 +6,12 @@ type ActionKind string
 const (
 	// ActionCreate creates a new file.
 	ActionCreate ActionKind = "create"
+	// ActionCleanDir removes all contents from an existing directory before writing files.
+	ActionCleanDir ActionKind = "clean-dir"
 	// ActionUpdate updates a file allowed by its strategy.
 	ActionUpdate ActionKind = "update"
+	// ActionOverwrite replaces an existing file allowed by its strategy.
+	ActionOverwrite ActionKind = "overwrite"
 	// ActionSkip leaves an identical file untouched.
 	ActionSkip ActionKind = "skip"
 	// ActionConflict reports an unsafe existing file.
@@ -22,6 +26,8 @@ const (
 	StrategyOwned FileStrategy = "owned"
 	// StrategyMerge updates files after target-specific merge logic preserved user keys.
 	StrategyMerge FileStrategy = "merge"
+	// StrategyOverwrite replaces files that are fully managed by agentsflow.
+	StrategyOverwrite FileStrategy = "overwrite"
 	// StrategyCreateOnly creates missing files and conflicts on differing existing files.
 	StrategyCreateOnly FileStrategy = "create-only"
 )
@@ -43,9 +49,10 @@ type DesiredFile struct {
 
 // ArtifactSet is the set of target-rendered files to install.
 type ArtifactSet struct {
-	Target string
-	Scope  string
-	Files  []DesiredFile
+	Target    string
+	Scope     string
+	CleanDirs []string
+	Files     []DesiredFile
 }
 
 // Plan is the set of files a target renderer wants to install.

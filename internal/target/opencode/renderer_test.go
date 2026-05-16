@@ -2,6 +2,8 @@ package opencode
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -37,6 +39,7 @@ func TestRenderCreatesProjectArtifacts(t *testing.T) {
 		WorkDir: workDir,
 		HomeDir: t.TempDir(),
 	})
+	assertActionKind(t, plan, filepath.Join(workDir, ".opencode", "agents"), install.ActionCleanDir)
 
 	if agents := actionContent(t, plan, filepath.Join(workDir, "AGENTS.md")); agents != "# Test" {
 		t.Fatalf("AGENTS.md = %q, want project instructions", agents)
@@ -62,6 +65,56 @@ func TestRenderCreatesProjectArtifacts(t *testing.T) {
 	}
 }
 
+func TestRenderMergesConfigJSON(t *testing.T) {
+	workDir := t.TempDir()
+	configPath := filepath.Join(workDir, "opencode.json")
+	if err := os.WriteFile(configPath, []byte(`{"custom":true,"model":"old"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan := renderPlan(t, target.RenderInput{
+		Flow:    testFlow(),
+		Models:  binding.Models{"main": "gpt"},
+		Scope:   binding.ScopeProject,
+		WorkDir: workDir,
+		HomeDir: t.TempDir(),
+	})
+	assertActionKind(t, plan, configPath, install.ActionUpdate)
+
+	var config map[string]any
+	if err := json.Unmarshal([]byte(actionContent(t, plan, configPath)), &config); err != nil {
+		t.Fatal(err)
+	}
+	if config["custom"] != true {
+		t.Fatalf("custom config was not preserved: %#v", config)
+	}
+	if config["model"] != "gpt" {
+		t.Fatalf("model = %#v", config["model"])
+	}
+}
+
+func TestMergeOpenCodeConfigPreservesExistingKeysWithoutFilesystem(t *testing.T) {
+	content, err := MergeOpenCodeConfig([]byte(`{"custom":true,"model":"old"}`), "gpt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(content, &config); err != nil {
+		t.Fatal(err)
+	}
+	if config["custom"] != true {
+		t.Fatalf("custom config was not preserved: %#v", config)
+	}
+	if config["model"] != "gpt" {
+		t.Fatalf("model = %#v", config["model"])
+	}
+}
+
+func TestMergeOpenCodeConfigReportsInvalidExistingJSON(t *testing.T) {
+	if _, err := MergeOpenCodeConfig([]byte(`{"invalid"`), "gpt"); err == nil {
+		t.Fatal("expected invalid JSON error")
+	}
+}
+
 func renderPlan(t *testing.T, input target.RenderInput) install.Plan {
 	t.Helper()
 	artifacts, diags := (Renderer{}).Render(context.Background(), input)
@@ -80,6 +133,19 @@ func actionContent(t *testing.T, plan install.Plan, path string) string {
 	}
 	t.Fatalf("expected action for %s, got %#v", path, plan.Actions)
 	return ""
+}
+
+func assertActionKind(t *testing.T, plan install.Plan, path string, kind install.ActionKind) {
+	t.Helper()
+	for _, action := range plan.Actions {
+		if action.Path == path {
+			if action.Kind != kind {
+				t.Fatalf("%s kind = %q, want %q", path, action.Kind, kind)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected action for %s, got %#v", path, plan.Actions)
 }
 
 func testFlow() flowmodel.Flow {

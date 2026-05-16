@@ -50,7 +50,7 @@ func (r Renderer) Render(_ context.Context, input target.RenderInput) (install.A
 		files = append(files, install.DesiredFile{Path: path, Content: content, Strategy: strategy})
 	}
 	if agents, ok := input.Flow.Instructions["AGENTS.md"]; ok {
-		addDesired(filepath.Join(root, "AGENTS.md"), []byte(agents), install.StrategyCreateOnly)
+		addDesired(filepath.Join(root, "AGENTS.md"), []byte(agents), install.StrategyOverwrite)
 	}
 	configPath := filepath.Join(configDir, "config.toml")
 	existingConfig, err := filesystem.ReadOptionalFile(r.Reader, configPath)
@@ -69,9 +69,14 @@ func (r Renderer) Render(_ context.Context, input target.RenderInput) (install.A
 		if err != nil {
 			return install.ArtifactSet{}, []diagnostic.Diagnostic{diagnostic.Errorf("%s", err.Error())}
 		}
-		addDesired(filepath.Join(configDir, "agents", id+".toml"), content, install.StrategyOwned)
+		addDesired(filepath.Join(configDir, "agents", id+".toml"), content, install.StrategyOverwrite)
 	}
-	return install.ArtifactSet{Target: string(r.Metadata().Name), Scope: string(input.Scope), Files: files}, nil
+	return install.ArtifactSet{
+		Target:    string(r.Metadata().Name),
+		Scope:     string(input.Scope),
+		CleanDirs: []string{filepath.Join(configDir, "agents")},
+		Files:     files,
+	}, nil
 }
 
 // MergeCodexConfig applies agentsflow-managed Codex config keys to existing TOML.

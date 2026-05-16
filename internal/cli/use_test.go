@@ -184,11 +184,11 @@ func TestUseCommandInputErrorsIncludeUsage(t *testing.T) {
 	}
 }
 
-func TestUseCommandYesDoesNotBypassConflicts(t *testing.T) {
+func TestUseCommandYesOverwritesManagedFiles(t *testing.T) {
 	workDir := t.TempDir()
 	templatePath := writeUseTemplate(t, workDir, singleSlotTemplate)
-	conflictPath := filepath.Join(workDir, "AGENTS.md")
-	if err := os.WriteFile(conflictPath, []byte("manual"), 0o644); err != nil {
+	managedPath := filepath.Join(workDir, "AGENTS.md")
+	if err := os.WriteFile(managedPath, []byte("manual"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var stdout bytes.Buffer
@@ -201,18 +201,18 @@ func TestUseCommandYesDoesNotBypassConflicts(t *testing.T) {
 		"--yes",
 	})
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatal("expected conflict error")
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(err.Error(), "install plan has conflicts") {
-		t.Fatalf("error = %q", err)
+	content, err := os.ReadFile(managedPath)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(err.Error(), "Usage:") {
-		t.Fatalf("runtime error unexpectedly included usage:\n%s", err)
+	if strings.TrimSpace(string(content)) != "# Test" {
+		t.Fatalf("managed file was not overwritten:\n%s", content)
 	}
-	if strings.Contains(stdout.String(), "Done.") {
-		t.Fatalf("conflicting install completed unexpectedly:\n%s", stdout.String())
+	if !strings.Contains(stdout.String(), "Done.") {
+		t.Fatalf("install did not complete:\n%s", stdout.String())
 	}
 }
 
