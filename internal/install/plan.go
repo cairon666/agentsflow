@@ -22,8 +22,6 @@ const (
 type FileStrategy string
 
 const (
-	// StrategyOwned is reserved for future manifest-backed owned files.
-	StrategyOwned FileStrategy = "owned"
 	// StrategyMerge updates files after target-specific merge logic preserved user keys.
 	StrategyMerge FileStrategy = "merge"
 	// StrategyOverwrite replaces files that are fully managed by agentsflow.

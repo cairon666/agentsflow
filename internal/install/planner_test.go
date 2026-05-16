@@ -118,27 +118,6 @@ func TestBuildPlanCleanDirPrecedesAgentWrites(t *testing.T) {
 	}
 }
 
-func TestBuildPlanOwnedStrategyConflictsWithoutManifest(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "agent.md")
-	if err := os.WriteFile(path, []byte("manual"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	plan := BuildPlan(ArtifactSet{
-		Target: "test",
-		Scope:  "project",
-		Files: []DesiredFile{
-			{Path: path, Content: []byte("generated"), Strategy: StrategyOwned},
-		},
-	})
-	if len(plan.Actions) != 1 {
-		t.Fatalf("actions = %d", len(plan.Actions))
-	}
-	if plan.Actions[0].Kind != ActionConflict {
-		t.Fatalf("kind = %q, want conflict", plan.Actions[0].Kind)
-	}
-}
-
 func TestBuildPlanCreateOnlyStrategyConflictsOnExistingDifferentFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
