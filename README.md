@@ -11,6 +11,24 @@ npm install -g agentsflow
 agentsflow --version 
 ```
 
+## Usage
+
+Установить portable template в конкретный agent CLI:
+
+```sh
+agentsflow use ./agentsflow.yaml --target codex --bind main=gpt-5.4-codex --scope project
+```
+
+Экспортировать существующую конфигурацию Codex, Claude Code или OpenCode в
+portable template:
+
+```sh
+agentsflow export --source codex --scope project --output agentsflow.yaml --yes
+```
+
+Если `--source`, `--scope` или `--output` не указаны, CLI спросит их
+интерактивно. При пустом output используется `agentsflow.yaml`.
+
 ## Release
 
 Релизы управляются через GitHub Actions:

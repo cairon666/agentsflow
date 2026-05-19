@@ -9,6 +9,10 @@ import (
 	"github.com/cairon666/agentsflow/internal/binding"
 	"github.com/cairon666/agentsflow/internal/console"
 	"github.com/cairon666/agentsflow/internal/diagnostic"
+	"github.com/cairon666/agentsflow/internal/exporter"
+	claudeexporter "github.com/cairon666/agentsflow/internal/exporter/claude"
+	codexexporter "github.com/cairon666/agentsflow/internal/exporter/codex"
+	opencodeexporter "github.com/cairon666/agentsflow/internal/exporter/opencode"
 	flowmodel "github.com/cairon666/agentsflow/internal/flow"
 	"github.com/cairon666/agentsflow/internal/install"
 	templatesource "github.com/cairon666/agentsflow/internal/source"
@@ -41,6 +45,12 @@ func NewApp(config Config) app.App {
 			claude.New(),
 			opencode.New(),
 		)},
+		ExporterRegistry: exporterRegistryPort{registry: exporter.NewRegistry(
+			codexexporter.NewExporter(),
+			claudeexporter.NewExporter(),
+			opencodeexporter.NewExporter(),
+		)},
+		SpecEncoder:    specEncoderPort{},
 		InstallPlanner: installPlannerPort{},
 		InstallWriter:  install.NewWriter(),
 		Reporter:       console.NewReporter(config.Stdout),
@@ -137,6 +147,55 @@ func (r targetRendererPort) Render(ctx context.Context, input app.RenderInput) (
 		WorkDir: input.WorkDir,
 		HomeDir: input.HomeDir,
 	})
+}
+
+type exporterRegistryPort struct {
+	registry exporter.Registry
+}
+
+func (r exporterRegistryPort) Resolve(name string) (binding.Target, error) {
+	return r.registry.Resolve(name)
+}
+
+func (r exporterRegistryPort) Get(name string) (app.SourceExporter, error) {
+	exporter, err := r.registry.Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return sourceExporterPort{exporter: exporter}, nil
+}
+
+func (r exporterRegistryPort) All() []app.SourceExporter {
+	exporters := r.registry.All()
+	out := make([]app.SourceExporter, 0, len(exporters))
+	for _, exporter := range exporters {
+		out = append(out, sourceExporterPort{exporter: exporter})
+	}
+	return out
+}
+
+type sourceExporterPort struct {
+	exporter exporter.Exporter
+}
+
+func (e sourceExporterPort) Source() binding.Target {
+	return e.exporter.Metadata().Name
+}
+
+func (e sourceExporterPort) Export(ctx context.Context, input app.ExportInput) (app.ExportResult, error) {
+	result, err := e.exporter.Export(ctx, exporter.ExportInput{
+		Source:  input.Source,
+		Scope:   input.Scope,
+		WorkDir: input.WorkDir,
+		HomeDir: input.HomeDir,
+	})
+	return app.ExportResult{Spec: result.Spec, Diagnostics: result.Diagnostics}, err
+}
+
+type specEncoderPort struct{}
+
+func (specEncoderPort) EncodeSpec(spec flowmodel.Spec) ([]byte, error) {
+	return flowmodel.EncodeSpec(spec)
 }
 
 type installPlannerPort struct{}

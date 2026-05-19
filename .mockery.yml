@@ -16,6 +16,10 @@ packages:
       ChoiceCollector:
       TargetRegistry:
       TargetRenderer:
+      ExportChoiceCollector:
+      ExporterRegistry:
+      SourceExporter:
+      SpecEncoder:
       InstallPlanner:
       InstallWriter:
   github.com/cairon666/agentsflow/internal/choices:

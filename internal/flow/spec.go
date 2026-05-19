@@ -13,7 +13,7 @@ type Spec struct {
 // SpecModelSlot describes a logical model binding requested from the user.
 type SpecModelSlot struct {
 	Description string `yaml:"description"`
-	Fallback    string `yaml:"fallback"`
+	Fallback    string `yaml:"fallback,omitempty"`
 }
 
 // SpecPermissionProfile binds capabilities to allow, ask, or deny decisions.
@@ -25,8 +25,8 @@ type SpecPermissionProfile struct {
 // SpecAgent describes a reusable subagent role in the template spec.
 type SpecAgent struct {
 	Description       string `yaml:"description"`
-	ModelSlot         string `yaml:"model_slot"`
-	ReasoningEffort   string `yaml:"reasoning_effort"`
+	ModelSlot         string `yaml:"model_slot,omitempty"`
+	ReasoningEffort   string `yaml:"reasoning_effort,omitempty"`
 	PermissionProfile string `yaml:"permission_profile"`
 	Prompt            string `yaml:"prompt"`
 }

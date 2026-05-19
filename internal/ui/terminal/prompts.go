@@ -29,6 +29,23 @@ func (p HuhPrompter) ChooseTarget(targets []choices.TargetOption) (binding.Targe
 	return value, nil
 }
 
+// ChooseSource asks which CLI source should be exported.
+func (p HuhPrompter) ChooseSource(sources []choices.SourceOption) (binding.Target, error) {
+	options := make([]huh.Option[binding.Target], 0, len(sources))
+	for _, source := range sources {
+		options = append(options, huh.NewOption(source.Label, source.Value))
+	}
+	var value binding.Target
+	if err := huh.NewSelect[binding.Target]().
+		Title("Which CLI config do you want to export?").
+		Options(options...).
+		Value(&value).
+		Run(); err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
 // ChooseTemplate asks which repository template should be used.
 func (p HuhPrompter) ChooseTemplate(templates []choices.TemplateOption) (string, error) {
 	options := make([]huh.Option[string], 0, len(templates))
@@ -55,6 +72,19 @@ func (p HuhPrompter) AskModel(slot, description string) (string, error) {
 	}
 	if err := huh.NewInput().
 		Title(title).
+		Value(&value).
+		Run(); err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+// AskOutputPath asks where the exported template should be written.
+func (p HuhPrompter) AskOutputPath(defaultPath string) (string, error) {
+	var value string
+	if err := huh.NewInput().
+		Title("Output template path").
+		Placeholder(defaultPath).
 		Value(&value).
 		Run(); err != nil {
 		return "", err

@@ -25,6 +25,10 @@ func NewRootCommand() *cobra.Command {
 	}
 	root.SetVersionTemplate("{{.Version}}\n")
 	root.SetHelpCommand(&cobra.Command{Use: "__help", Hidden: true})
-	root.AddCommand(newUseCommand(composition.NewApp(composition.Config{Stdout: os.Stdout})))
+	application := composition.NewApp(composition.Config{Stdout: os.Stdout})
+	root.AddCommand(
+		newExportCommand(application),
+		newUseCommand(application),
+	)
 	return root
 }

@@ -96,6 +96,57 @@ type TargetRegistry interface {
 	All() []TargetRenderer
 }
 
+// ExportSourceOption is shown to the user in the export source selection step.
+type ExportSourceOption struct {
+	Value binding.Target
+	Label string
+}
+
+// ExportChoices are collected from the user or flags before exporting.
+type ExportChoices struct {
+	Source binding.Target
+	Scope  binding.Scope
+	Output string
+}
+
+// ExportChoiceCollector collects decisions required for native config export.
+type ExportChoiceCollector interface {
+	CollectExport(context.Context, []ExportSourceOption) (ExportChoices, error)
+	Confirm(context.Context, string) (bool, error)
+}
+
+// ExportInput contains a selected native source and filesystem roots.
+type ExportInput struct {
+	Source  binding.Target
+	Scope   binding.Scope
+	WorkDir string
+	HomeDir string
+}
+
+// ExportResult contains an exported template spec and diagnostics.
+type ExportResult struct {
+	Spec        flowmodel.Spec
+	Diagnostics []diagnostic.Diagnostic
+}
+
+// SourceExporter reads native agent CLI configuration and converts it to a template spec.
+type SourceExporter interface {
+	Source() binding.Target
+	Export(context.Context, ExportInput) (ExportResult, error)
+}
+
+// ExporterRegistry resolves and lists native source exporters.
+type ExporterRegistry interface {
+	Resolve(string) (binding.Target, error)
+	Get(string) (SourceExporter, error)
+	All() []SourceExporter
+}
+
+// SpecEncoder renders a template spec for writing.
+type SpecEncoder interface {
+	EncodeSpec(flowmodel.Spec) ([]byte, error)
+}
+
 // InstallPlanner builds an install plan from rendered artifacts.
 type InstallPlanner interface {
 	Build(install.ArtifactSet) install.Plan

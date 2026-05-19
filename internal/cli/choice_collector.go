@@ -47,3 +47,27 @@ func (c choiceCollector) Collect(_ context.Context, flow flowmodel.Flow, targets
 func (c choiceCollector) Confirm(_ context.Context, message string) (bool, error) {
 	return c.prompter.Confirm(message)
 }
+
+type exportChoiceCollector struct {
+	prompter choices.ExportPrompter
+	reporter app.Reporter
+}
+
+func (c exportChoiceCollector) CollectExport(_ context.Context, sources []app.ExportSourceOption) (app.ExportChoices, error) {
+	choiceSources := make([]choices.SourceOption, 0, len(sources))
+	for _, source := range sources {
+		choiceSources = append(choiceSources, choices.SourceOption{
+			Value: source.Value,
+			Label: source.Label,
+		})
+	}
+	collected, err := choices.CollectExport(choiceSources, c.prompter, c.reporter)
+	if err != nil {
+		return app.ExportChoices{}, err
+	}
+	return app.ExportChoices{Source: collected.Source, Scope: collected.Scope, Output: collected.Output}, nil
+}
+
+func (c exportChoiceCollector) Confirm(_ context.Context, message string) (bool, error) {
+	return c.prompter.Confirm(message)
+}

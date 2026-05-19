@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestRootCommandExposesOnlyUse(t *testing.T) {
+func TestRootCommandExposesPublicCommands(t *testing.T) {
 	cmd := NewRootCommand()
 	public := []string{}
 	for _, child := range cmd.Commands() {
@@ -15,8 +15,8 @@ func TestRootCommandExposesOnlyUse(t *testing.T) {
 		}
 		public = append(public, child.Name())
 	}
-	if len(public) != 1 || public[0] != "use" {
-		t.Fatalf("public commands = %v, want [use]", public)
+	if strings.Join(public, ",") != "export,use" {
+		t.Fatalf("public commands = %v, want [export use]", public)
 	}
 }
 

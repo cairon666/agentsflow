@@ -36,7 +36,7 @@ func (a App) UseWithOptions(ctx context.Context, source string, choices ChoiceCo
 		return err
 	}
 	if len(loaded.Diagnostics) > 0 {
-		a.Reporter.Message(diagnostic.FormatMany(loaded.Diagnostics))
+		a.Reporter.HistoryBlock(diagnostic.FormatMany(loaded.Diagnostics))
 	}
 	if diagnostic.HasErrors(loaded.Diagnostics) {
 		return fmt.Errorf("template validation failed")
@@ -58,14 +58,14 @@ func (a App) UseWithOptions(ctx context.Context, source string, choices ChoiceCo
 	}
 	targetDiags := targetRenderer.Validate(ctx, renderInput)
 	if len(targetDiags) > 0 {
-		a.Reporter.Message(diagnostic.FormatMany(targetDiags))
+		a.Reporter.HistoryBlock(diagnostic.FormatMany(targetDiags))
 	}
 	if diagnostic.HasErrors(targetDiags) {
 		return fmt.Errorf("target validation failed")
 	}
 	artifacts, renderDiags := targetRenderer.Render(ctx, renderInput)
 	if len(renderDiags) > 0 {
-		a.Reporter.Message(diagnostic.FormatMany(renderDiags))
+		a.Reporter.HistoryBlock(diagnostic.FormatMany(renderDiags))
 	}
 	if diagnostic.HasErrors(renderDiags) {
 		return fmt.Errorf("target rendering failed")
